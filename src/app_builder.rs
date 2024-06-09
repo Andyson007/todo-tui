@@ -16,7 +16,7 @@ impl AppBuilder {
     }
 
     /// Set the options of the app
-    pub fn with_options(self, options: impl Into<Vec<usize>>) -> Self {
+    pub fn with_options(self, options: impl Into<Vec<(String, String)>>) -> Self {
         Self(App {
             options: options.into(),
             ..self.0

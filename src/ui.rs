@@ -1,5 +1,6 @@
 //! This module is responsible for handling all ui operations
 //! It uses an [`App`] instance for this
+
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
@@ -16,16 +17,32 @@ use crate::app::App;
 /// It probably assumes a lot about the
 /// terminal being in raw mode etc.
 pub fn ui(frame: &mut Frame, app: &App) {
-    // Create the layout sections.
     let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Min(1),
-            Constraint::Length(3),
-        ])
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(frame.size());
 
+    draw_selection(frame, chunks[0], app);
+    draw_info(frame, chunks[1], app)
+}
+
+/// draws the associated inforation with the current item
+fn draw_info(frame: &mut Frame, chunk: Rect, app: &App) {
+    let info = Paragraph::new(Text::raw(match app.selected {
+        Some(x) => app.options[x].1.to_owned(),
+        None => "".to_string(),
+    }))
+    .block(Block::bordered());
+
+    frame.render_widget(info, chunk);
+}
+
+/// Draws all things that are interactable
+fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(1)])
+        .split(chunk);
     let title_block = Block::default()
         .borders(Borders::ALL)
         .style(Style::default());
@@ -36,7 +53,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
     frame.render_widget(title, chunks[0]);
 
     let mut state = ListState::with_selected(ListState::default(), app.selected);
-    let list = List::new(app.options.iter().map(|x| format!("{x}")))
+    let list = List::new(app.options.iter().map(|x| x.0.to_owned()))
         .block(Block::bordered().title("List"))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
 

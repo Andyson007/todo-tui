@@ -1,31 +1,38 @@
 //! The main module.
 //! implements App and all of its features
 
-/// Represents the current screen that
-/// the user has selected
+/// Represents the current mode that
+/// the user is in
 #[derive(Debug)]
-pub enum CurrentScreen {
+pub enum CurrentMode {
     /// They are currently selecting the menu in th emiddle on the left
     Menu,
+    /// They were in the Menu, but they are now editing an entry
+    Edit(CurrentEdit),
+    /// Add a new item to the todo list
+    Add(CurrentEdit),
 }
 
 #[derive(Debug)]
 /// Contains all state information of the app
 pub struct App {
     /// The screen that the user is currently selecting
-    pub current_screen: CurrentScreen,
+    pub current_mode: CurrentMode,
     /// The title of the application
     pub title: String,
     /// The currently selected item (An index)
     pub selected: Option<usize>,
     /// All selectable options
-    pub options: Vec<usize>,
+    pub options: Vec<(String, String)>,
+    /// The current layout of the screen
+    pub layout: Layout,
 }
 
 impl Default for App {
     fn default() -> Self {
         App {
-            current_screen: CurrentScreen::Menu,
+            layout: Layout::Small,
+            current_mode: CurrentMode::Menu,
             selected: None,
             options: Vec::new(),
             title: String::new(),
@@ -58,4 +65,21 @@ pub enum Direction {
     Up,
     /// Moved up
     Down,
+}
+
+/// The current layout of the screen
+#[derive(Debug)]
+pub enum Layout {
+    /// Everything is at its smallest size
+    Small,
+}
+
+#[derive(Debug, Copy, Clone)]
+/// An enum containing an information about what
+/// Datum is currently being edited
+pub enum CurrentEdit {
+    #[allow(missing_docs)]
+    Title,
+    #[allow(missing_docs)]
+    Body,
 }

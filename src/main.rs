@@ -26,7 +26,13 @@ fn main() -> color_eyre::Result<()> {
     // create app and run it
     let mut app = AppBuilder::default()
         .with_title("AndyCo")
-        .with_options([1, 2, 3, 4])
+        .with_options([
+            (
+                "<C-w> support".to_string(),
+                "This todo-app doesn't delete full words when pressing <C-w>".to_string(),
+            ),
+            ("desc".to_string(), "cool2".to_string()),
+        ])
         .into();
     let res = run_app(&mut terminal, &mut app);
 
@@ -47,7 +53,10 @@ fn main() -> color_eyre::Result<()> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<bool> {
+fn run_app<B>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<bool>
+where
+    B: Backend,
+{
     loop {
         terminal.draw(|f| ui(f, app))?;
 
@@ -56,15 +65,52 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                 // Skip events that are not KeyEventKind::Press
                 continue;
             }
-            match app.current_screen {
-                CurrentScreen::Menu => match key.code {
+            match app.current_mode {
+                CurrentMode::Menu => match key.code {
+                    // quit
                     KeyCode::Char('q') => return Ok(true),
                     #[rustfmt::skip]
+                    // Vim motion + Down key
                     KeyCode::Char('j') | KeyCode::Down => app.change_menu_item(Direction::Up),
                     #[rustfmt::skip]
+                    // Vim motion + Down key
                     KeyCode::Char('k') | KeyCode::Up => app.change_menu_item(Direction::Down),
+                    // Enter edit mode
+                    KeyCode::Char('e') if app.selected.is_some() => {
+                        app.current_mode = CurrentMode::Edit(CurrentEdit::Title)
+                    }
+                    // Enter add mode (Add a new item)
+                    KeyCode::Char('a') => app.current_mode = CurrentMode::Add(CurrentEdit::Title),
+
+                    // Delete entry
+                    KeyCode::Char('d') if app.selected.is_some() => {
+                        let selected = unsafe { app.selected.unwrap_unchecked() };
+                        app.options.remove(selected);
+                        if selected == app.options.len() {
+                            if app.options.is_empty() {
+                                app.selected = None
+                            } else {
+                                app.selected = Some(selected - 1);
+                            }
+                        }
+                    }
                     _ => {}
                 },
+                CurrentMode::Edit(curr) => match key.code {
+                    KeyCode::Backspace => {
+                        match curr {
+                            CurrentEdit::Title => app.options[app.selected.unwrap()].0.pop(),
+                            CurrentEdit::Body => app.options[app.selected.unwrap()].1.pop(),
+                        };
+                    }
+                    KeyCode::Esc => app.current_mode = CurrentMode::Menu,
+                    KeyCode::Char(x) => match curr {
+                        CurrentEdit::Title => app.options[app.selected.unwrap()].0.push(x),
+                        CurrentEdit::Body => app.options[app.selected.unwrap()].1.push(x),
+                    },
+                    _ => (),
+                },
+                CurrentMode::Add(_) => todo!(),
             }
         }
     }
