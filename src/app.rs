@@ -1,58 +1,61 @@
-use std::collections::HashMap;
+//! The main module.
+//! implements App and all of its features
 
+/// Represents the current screen that
+/// the user has selected
+#[derive(Debug)]
 pub enum CurrentScreen {
-    Main,
-    Editing,
-    Exiting,
+    /// They are currently selecting the menu in th emiddle on the left
+    Menu,
 }
 
-pub enum CurrentlyEditing {
-    Key,
-    Value,
-}
-
+#[derive(Debug)]
+/// Contains all state information of the app
 pub struct App {
-    pub key_input: String,              // the currently being edited json key.
-    pub value_input: String,            // the currently being edited json value.
-    pub pairs: HashMap<String, String>, // The representation of our key and value pairs with serde Serialize support
-    pub current_screen: CurrentScreen, // the current screen the user is looking at, and will later determine what is rendered.
-    pub currently_editing: Option<CurrentlyEditing>, // the optional state containing which of the key or value pair the user is editing. It is an option, because when the user is not directly editing a key-value pair, this will be set to `None`.
+    /// The screen that the user is currently selecting
+    pub current_screen: CurrentScreen,
+    /// The title of the application
+    pub title: String,
+    /// The currently selected item (An index)
+    pub selected: Option<usize>,
+    /// All selectable options
+    pub options: Vec<usize>,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        App {
+            current_screen: CurrentScreen::Menu,
+            selected: None,
+            options: Vec::new(),
+            title: String::new(),
+        }
+    }
 }
 
 impl App {
-    pub fn new() -> App {
-        App {
-            key_input: String::new(),
-            value_input: String::new(),
-            pairs: HashMap::new(),
-            current_screen: CurrentScreen::Main,
-            currently_editing: None,
+    /// Changes what item is selected.
+    pub fn change_menu_item(&mut self, dir: Direction) {
+        let len = self.options.len();
+        if len == 0 {
+            return;
+        }
+        match dir {
+            Direction::Up => self.selected = self.selected.map_or(Some(0), |x| Some((x + 1) % len)),
+            Direction::Down => {
+                self.selected = self
+                    .selected
+                    .map_or(Some(self.options.len() - 1), |x| Some((x + len - 1) % len))
+            }
         }
     }
+}
 
-    pub fn save_key_value(&mut self) {
-        self.pairs
-            .insert(self.key_input.clone(), self.value_input.clone());
-
-        self.key_input = String::new();
-        self.value_input = String::new();
-        self.currently_editing = None;
-    }
-
-    pub fn toggle_editing(&mut self) {
-        if let Some(edit_mode) = &self.currently_editing {
-            match edit_mode {
-                CurrentlyEditing::Key => self.currently_editing = Some(CurrentlyEditing::Value),
-                CurrentlyEditing::Value => self.currently_editing = Some(CurrentlyEditing::Key),
-            };
-        } else {
-            self.currently_editing = Some(CurrentlyEditing::Key);
-        }
-    }
-
-    pub fn print_json(&self) -> serde_json::Result<()> {
-        let output = serde_json::to_string(&self.pairs)?;
-        println!("{}", output);
-        Ok(())
-    }
+/// The direction that was moved
+#[derive(Debug)]
+pub enum Direction {
+    /// Moved down
+    Up,
+    /// Moved up
+    Down,
 }

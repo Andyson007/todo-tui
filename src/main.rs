@@ -1,24 +1,22 @@
-use std::{error::Error, io};
+//! Crate to manage something. Haven't decided yet
+
+use std::io;
+use todo::{app::App, app::*, app_builder::AppBuilder, errors, ui::ui};
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+
 use ratatui::{
     backend::{Backend, CrosstermBackend},
     Terminal,
 };
 
-mod app;
-mod ui;
-use crate::{
-    app::{App, CurrentScreen, CurrentlyEditing},
-    ui::ui,
-};
-
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> color_eyre::Result<()> {
     // setup terminal
+    errors::install_hooks()?;
     enable_raw_mode()?;
     let mut stderr = io::stderr(); // This is a special case. Normally using stdout is fine
     execute!(stderr, EnterAlternateScreen, EnableMouseCapture)?;
@@ -26,7 +24,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let mut app = App::new();
+    let mut app = AppBuilder::default()
+        .with_title("AndyCo")
+        .with_options([1, 2, 3, 4])
+        .into();
     let res = run_app(&mut terminal, &mut app);
 
     // restore terminal
@@ -38,10 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     terminal.show_cursor()?;
 
-    if let Ok(do_print) = res {
-        if do_print {
-            app.print_json()?;
-        }
+    if let Ok(_do_print) = res {
     } else if let Err(err) = res {
         println!("{err:?}");
     }
@@ -59,70 +57,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                 continue;
             }
             match app.current_screen {
-                CurrentScreen::Main => match key.code {
-                    KeyCode::Char('e') => {
-                        app.current_screen = CurrentScreen::Editing;
-                        app.currently_editing = Some(CurrentlyEditing::Key);
-                    }
-                    KeyCode::Char('q') => {
-                        app.current_screen = CurrentScreen::Exiting;
-                    }
-                    _ => {}
-                },
-                CurrentScreen::Exiting => match key.code {
-                    KeyCode::Char('y') => {
-                        return Ok(true);
-                    }
-                    KeyCode::Char('n') | KeyCode::Char('q') => {
-                        return Ok(false);
-                    }
-                    _ => {}
-                },
-                CurrentScreen::Editing => match key.code {
-                    KeyCode::Enter => {
-                        if let Some(editing) = &app.currently_editing {
-                            match editing {
-                                CurrentlyEditing::Key => {
-                                    app.currently_editing = Some(CurrentlyEditing::Value);
-                                }
-                                CurrentlyEditing::Value => {
-                                    app.save_key_value();
-                                    app.current_screen = CurrentScreen::Main;
-                                }
-                            }
-                        }
-                    }
-                    KeyCode::Backspace => {
-                        if let Some(editing) = &app.currently_editing {
-                            match editing {
-                                CurrentlyEditing::Key => {
-                                    app.key_input.pop();
-                                }
-                                CurrentlyEditing::Value => {
-                                    app.value_input.pop();
-                                }
-                            }
-                        }
-                    }
-                    KeyCode::Esc => {
-                        app.current_screen = CurrentScreen::Main;
-                        app.currently_editing = None;
-                    }
-                    KeyCode::Tab => {
-                        app.toggle_editing();
-                    }
-                    KeyCode::Char(value) => {
-                        if let Some(editing) = &app.currently_editing {
-                            match editing {
-                                CurrentlyEditing::Key => {
-                                    app.key_input.push(value);
-                                }
-                                CurrentlyEditing::Value => {
-                                    app.value_input.push(value);
-                                }
-                            }
-                        }
-                    }
+                CurrentScreen::Menu => match key.code {
+                    KeyCode::Char('q') => return Ok(true),
+                    #[rustfmt::skip]
+                    KeyCode::Char('j') | KeyCode::Down => app.change_menu_item(Direction::Up),
+                    #[rustfmt::skip]
+                    KeyCode::Char('k') | KeyCode::Up => app.change_menu_item(Direction::Down),
                     _ => {}
                 },
             }
