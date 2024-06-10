@@ -96,7 +96,7 @@ where
                     }
                     _ => {}
                 },
-                CurrentMode::Edit(curr) => match key.code {
+                CurrentMode::Edit(ref mut curr) => match key.code {
                     KeyCode::Backspace => {
                         match curr {
                             CurrentEdit::Title => app.options[app.selected.unwrap()].0.pop(),
@@ -108,6 +108,12 @@ where
                         CurrentEdit::Title => app.options[app.selected.unwrap()].0.push(x),
                         CurrentEdit::Body => app.options[app.selected.unwrap()].1.push(x),
                     },
+                    KeyCode::Tab => {
+                        *curr = match curr {
+                            CurrentEdit::Title => CurrentEdit::Body,
+                            CurrentEdit::Body => CurrentEdit::Title,
+                        }
+                    }
                     _ => (),
                 },
                 CurrentMode::Add(_) => todo!(),

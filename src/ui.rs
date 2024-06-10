@@ -11,7 +11,7 @@ use ratatui::{
 
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::{App, CurrentMode};
+use crate::app::{App, CurrentEdit, CurrentMode};
 
 /// Draws the ui.
 /// It probably assumes a lot about the
@@ -45,7 +45,11 @@ pub fn ui(frame: &mut Frame, app: &App) {
                     let title = Block::default()
                         .title("Title")
                         .borders(Borders::ALL)
-                        .border_style(Style::default().fg(Color::Green));
+                        .border_style(Style::default().fg(if matches!(x, CurrentEdit::Title) {
+                            Color::Green
+                        } else {
+                            Color::White
+                        }));
                     let title_text =
                         Paragraph::new(&*app.options[app.selected.unwrap()].0).block(title);
                     frame.render_widget(title_text, chunks[0]);
@@ -53,9 +57,14 @@ pub fn ui(frame: &mut Frame, app: &App) {
                     let description = Block::default()
                         .title("Description")
                         .borders(Borders::ALL)
-                        .border_style(Style::default().fg(Color::Green));
-                    let description_text =
-                        Paragraph::new(&*app.options[app.selected.unwrap()].1).block(description);
+                        .border_style(Style::default().fg(if matches!(x, CurrentEdit::Body) {
+                            Color::Green
+                        } else {
+                            Color::White
+                        }));
+                    let description_text = Paragraph::new(&*app.options[app.selected.unwrap()].1)
+                        .block(description)
+                        .wrap(Wrap { trim: false });
                     frame.render_widget(description_text, chunks[1]);
                 }
                 CurrentMode::Add(_) => todo!(),
@@ -70,7 +79,8 @@ fn draw_info(frame: &mut Frame, chunk: Rect, app: &App) {
         Some(x) => app.options[x].1.to_owned(),
         None => "".to_string(),
     }))
-    .block(Block::bordered());
+    .block(Block::bordered())
+    .wrap(Wrap { trim: false });
 
     frame.render_widget(info, chunk);
 }
