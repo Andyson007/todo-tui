@@ -67,48 +67,48 @@ where
             }
             if let Some(ref mut popup) = app.popup {
                 match popup {
-                    CurrentPopup::Edit(ref mut curr) => match key.code {
-                        KeyCode::Backspace => {
-                            match curr {
-                                CurrentEdit::Title => app.options[app.selected.unwrap()].0.pop(),
-                                CurrentEdit::Body => app.options[app.selected.unwrap()].1.pop(),
-                            };
-                        }
+                    Popup::Edit {
+                        ref mut title,
+                        ref mut description,
+                        ref mut editing,
+                    } => match key.code {
+                        KeyCode::Backspace => drop(
+                            match editing {
+                                CurrentEdit::Title => title,
+                                CurrentEdit::Body => description,
+                            }
+                            .pop(),
+                        ),
                         KeyCode::Esc => app.popup = None,
                         KeyCode::Enter => app.popup = None,
-                        KeyCode::Char(x) => match curr {
-                            CurrentEdit::Title => app.options[app.selected.unwrap()].0.push(x),
-                            CurrentEdit::Body => app.options[app.selected.unwrap()].1.push(x),
-                        },
                         KeyCode::Tab => {
-                            *curr = match curr {
+                            *editing = match editing {
                                 CurrentEdit::Title => CurrentEdit::Body,
                                 CurrentEdit::Body => CurrentEdit::Title,
                             }
                         }
+                        KeyCode::Char(x) => match editing {
+                            CurrentEdit::Title => title,
+                            CurrentEdit::Body => description,
+                        }
+                        .push(x),
                         _ => (),
                     },
-                    CurrentPopup::Add(_) => todo!(),
+                    Popup::Add { .. } => todo!(),
                 }
             } else {
                 match app.current_mode {
                     CurrentScreen::Menu => match key.code {
-                    // quit
+                        // quit
                         KeyCode::Char('q') => return Ok(true),
-                        #[rustfmt::skip]
-                    // Vim motion + Down key
-                    KeyCode::Char('j') | KeyCode::Down => app.change_menu_item(Direction::Up),
-                        #[rustfmt::skip]
-                    // Vim motion + Down key
-                    KeyCode::Char('k') | KeyCode::Up => app.change_menu_item(Direction::Down),
+                        // Vim motion + Down key
+                        KeyCode::Char('j') | KeyCode::Down => app.change_menu_item(Direction::Up),
+                        // Vim motion + Down key
+                        KeyCode::Char('k') | KeyCode::Up => app.change_menu_item(Direction::Down),
                         // Enter edit mode
-                        KeyCode::Char('e') if app.selected.is_some() => {
-                            app.popup = Some(CurrentPopup::Edit(CurrentEdit::Title))
-                        }
+                        KeyCode::Char('e') if app.selected.is_some() => app.edit(),
                         // Enter add mode (Add a new item)
-                        KeyCode::Char('a') => {
-                            app.popup = Some(CurrentPopup::Add(CurrentEdit::Title))
-                        }
+                        KeyCode::Char('a') => app.add(),
 
                         // Delete entry
                         KeyCode::Char('d') if app.selected.is_some() => {

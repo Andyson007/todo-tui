@@ -17,7 +17,7 @@ pub struct App {
     /// The screen that the user is currently selecting
     pub current_mode: CurrentScreen,
     /// The popup that is shown above everything
-    pub popup: Option<CurrentPopup>,
+    pub popup: Option<Popup>,
     /// The title of the application
     pub title: String,
     /// The currently selected item (An index)
@@ -57,6 +57,34 @@ impl App {
             }
         }
     }
+
+    /// Sets the popup field sensibly
+    pub fn edit(&mut self) {
+        if self.popup.is_some() || self.selected.is_none() {
+            // FIXME:
+            panic!("Bad popup state")
+        } else {
+            let option = self.options[self.selected.unwrap()].clone();
+            self.popup = Some(Popup::Edit {
+                title: option.0,
+                description: option.1,
+                editing: CurrentEdit::Title,
+            })
+        }
+    }
+    /// Sets the state to Add a new item sensibly
+    pub fn add(&mut self) {
+        if self.popup.is_some() {
+            // FIXME:
+            panic!("Bad popup state")
+        } else {
+            self.popup = Some(Popup::Edit {
+                title: String::new(),
+                description: String::new(),
+                editing: CurrentEdit::Title,
+            })
+        }
+    }
 }
 
 /// The direction that was moved
@@ -75,21 +103,33 @@ pub enum Layout {
     Small,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-/// An enum containing an information about what
-/// Datum is currently being edited
-pub enum CurrentEdit {
-    #[allow(missing_docs)]
-    Title,
-    #[allow(missing_docs)]
-    Body,
+/// State data for a popup
+#[derive(Debug)]
+pub enum Popup {
+    /// You are about to add an item
+    Add {
+        /// The title of the item
+        title: String,
+        /// The description of the item
+        description: String,
+        /// The currently highlighted/edited part of the popup
+        editing: CurrentEdit,
+    },
+    /// You are editing an item
+    Edit {
+        /// The title of the item
+        title: String,
+        /// The description of the item
+        description: String,
+        /// The currently highlighted/edited part of the popup
+        editing: CurrentEdit,
+    },
 }
 
-/// The current popup to be shown
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum CurrentPopup {
-    /// They were in the Menu, but they are now editing an entry
-    Edit(CurrentEdit),
-    /// Add a new item to the todo list
-    Add(CurrentEdit),
+/// What part of a todo-item are you editing?
+#[derive(Debug)]
+#[allow(missing_docs)]
+pub enum CurrentEdit {
+    Title,
+    Body,
 }
