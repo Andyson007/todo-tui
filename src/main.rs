@@ -65,62 +65,68 @@ where
                 // Skip events that are not KeyEventKind::Press
                 continue;
             }
-            match app.current_mode {
-                CurrentMode::Menu => match key.code {
-                    // quit
-                    KeyCode::Char('q') => return Ok(true),
-                    #[rustfmt::skip]
-                    // Vim motion + Down key
-                    KeyCode::Char('j') | KeyCode::Down => app.change_menu_item(Direction::Up),
-                    #[rustfmt::skip]
-                    // Vim motion + Down key
-                    KeyCode::Char('k') | KeyCode::Up => app.change_menu_item(Direction::Down),
-                    // Enter edit mode
-                    KeyCode::Char('e') if app.selected.is_some() => {
-                        app.current_mode = CurrentMode::Edit(CurrentEdit::Title)
-                    }
-                    // Enter add mode (Add a new item)
-                    KeyCode::Char('a') => app.current_mode = CurrentMode::Add(CurrentEdit::Title),
-
-                    // Delete entry
-                    KeyCode::Char('d') if app.selected.is_some() => {
-                        let selected = unsafe { app.selected.unwrap_unchecked() };
-                        app.options.remove(selected);
-                        if selected == app.options.len() {
-                            if app.options.is_empty() {
-                                app.selected = None
-                            } else {
-                                app.selected = Some(selected - 1);
+            if let Some(ref mut popup) = app.popup {
+                match popup {
+                    CurrentPopup::Edit(ref mut curr) => match key.code {
+                        KeyCode::Backspace => {
+                            match curr {
+                                CurrentEdit::Title => app.options[app.selected.unwrap()].0.pop(),
+                                CurrentEdit::Body => app.options[app.selected.unwrap()].1.pop(),
+                            };
+                        }
+                        KeyCode::Esc => app.popup = None,
+                        KeyCode::Enter => app.popup = None,
+                        KeyCode::Char(x) => match curr {
+                            CurrentEdit::Title => app.options[app.selected.unwrap()].0.push(x),
+                            CurrentEdit::Body => app.options[app.selected.unwrap()].1.push(x),
+                        },
+                        KeyCode::Tab => {
+                            *curr = match curr {
+                                CurrentEdit::Title => CurrentEdit::Body,
+                                CurrentEdit::Body => CurrentEdit::Title,
                             }
                         }
-                    }
-                    _ => {}
-                },
-                CurrentMode::Edit(ref mut curr) => match key.code {
-                    KeyCode::Backspace => {
-                        match curr {
-                            CurrentEdit::Title => app.options[app.selected.unwrap()].0.pop(),
-                            CurrentEdit::Body => app.options[app.selected.unwrap()].1.pop(),
-                        };
-                    }
-                    KeyCode::Esc => app.current_mode = CurrentMode::Menu,
-                    KeyCode::Char(x) => match curr {
-                        CurrentEdit::Title => app.options[app.selected.unwrap()].0.push(x),
-                        CurrentEdit::Body => app.options[app.selected.unwrap()].1.push(x),
+                        _ => (),
                     },
-                    KeyCode::Enter => {
-                        app.current_mode = CurrentMode::Menu;
-                    }
-                    KeyCode::Tab => {
-                        *curr = match curr {
-                            CurrentEdit::Title => CurrentEdit::Body,
-                            CurrentEdit::Body => CurrentEdit::Title,
+                    CurrentPopup::Add(_) => todo!(),
+                }
+            } else {
+                match app.current_mode {
+                    CurrentScreen::Menu => match key.code {
+                    // quit
+                        KeyCode::Char('q') => return Ok(true),
+                        #[rustfmt::skip]
+                    // Vim motion + Down key
+                    KeyCode::Char('j') | KeyCode::Down => app.change_menu_item(Direction::Up),
+                        #[rustfmt::skip]
+                    // Vim motion + Down key
+                    KeyCode::Char('k') | KeyCode::Up => app.change_menu_item(Direction::Down),
+                        // Enter edit mode
+                        KeyCode::Char('e') if app.selected.is_some() => {
+                            app.popup = Some(CurrentPopup::Edit(CurrentEdit::Title))
                         }
-                    }
-                    _ => (),
-                },
-                CurrentMode::Add(_) => todo!(),
-                CurrentMode::Description => todo!(),
+                        // Enter add mode (Add a new item)
+                        KeyCode::Char('a') => {
+                            app.popup = Some(CurrentPopup::Add(CurrentEdit::Title))
+                        }
+
+                        // Delete entry
+                        KeyCode::Char('d') if app.selected.is_some() => {
+                            let selected = unsafe { app.selected.unwrap_unchecked() };
+                            app.options.remove(selected);
+                            if selected == app.options.len() {
+                                if app.options.is_empty() {
+                                    app.selected = None
+                                } else {
+                                    app.selected = Some(selected - 1);
+                                }
+                            }
+                        }
+                        _ => {}
+                    },
+
+                    CurrentScreen::Description => todo!(),
+                }
             }
         }
     }

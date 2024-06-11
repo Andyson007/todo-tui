@@ -11,14 +11,14 @@ use ratatui::{
 
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::{App, CurrentEdit, CurrentMode};
+use crate::app::{App, CurrentEdit, CurrentPopup, CurrentScreen};
 
 /// Draws the ui.
 /// It probably assumes a lot about the
 /// terminal being in raw mode etc.
 pub fn ui(frame: &mut Frame, app: &App) {
     match app.current_mode {
-        ref mode @ (CurrentMode::Menu | CurrentMode::Edit(_) | CurrentMode::Add(_)) => {
+        CurrentScreen::Menu => {
             let chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -27,51 +27,54 @@ pub fn ui(frame: &mut Frame, app: &App) {
             draw_selection(frame, chunks[0], app);
             draw_info(frame, chunks[1], app);
             // Used to draw on top of the menu
-            match mode {
-                CurrentMode::Menu => (),
-                CurrentMode::Edit(x) => {
-                    let area = centered_rect(50, 50, frame.size());
-                    frame.render_widget(Clear, area);
+            if let Some(x) = app.popup {
+                match x {
+                    CurrentPopup::Edit(x) => {
+                        let area = centered_rect(50, 50, frame.size());
+                        frame.render_widget(Clear, area);
 
-                    let popup_block = Block::default().title("Edit").borders(Borders::ALL);
-                    frame.render_widget(popup_block, area);
+                        let popup_block = Block::default().title("Edit").borders(Borders::ALL);
+                        frame.render_widget(popup_block, area);
 
-                    let chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([Constraint::Length(3), Constraint::Min(1)])
-                        .margin(1)
-                        .split(area);
+                        let chunks = Layout::default()
+                            .direction(Direction::Vertical)
+                            .constraints([Constraint::Length(3), Constraint::Min(1)])
+                            .margin(1)
+                            .split(area);
 
-                    let title = Block::default()
-                        .title("Title")
-                        .borders(Borders::ALL)
-                        .border_style(Style::default().fg(if matches!(x, CurrentEdit::Title) {
-                            Color::Green
-                        } else {
-                            Color::White
-                        }));
-                    let title_text =
-                        Paragraph::new(&*app.options[app.selected.unwrap()].0).block(title);
-                    frame.render_widget(title_text, chunks[0]);
+                        let title = Block::default()
+                            .title("Title")
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(
+                                if matches!(x, CurrentEdit::Title) {
+                                    Color::Green
+                                } else {
+                                    Color::White
+                                },
+                            ));
+                        let title_text =
+                            Paragraph::new(&*app.options[app.selected.unwrap()].0).block(title);
+                        frame.render_widget(title_text, chunks[0]);
 
-                    let description = Block::default()
-                        .title("Description")
-                        .borders(Borders::ALL)
-                        .border_style(Style::default().fg(if matches!(x, CurrentEdit::Body) {
-                            Color::Green
-                        } else {
-                            Color::White
-                        }));
-                    let description_text = Paragraph::new(&*app.options[app.selected.unwrap()].1)
-                        .block(description)
-                        .wrap(Wrap { trim: false });
-                    frame.render_widget(description_text, chunks[1]);
+                        let description = Block::default()
+                            .title("Description")
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(if matches!(x, CurrentEdit::Body) {
+                                Color::Green
+                            } else {
+                                Color::White
+                            }));
+                        let description_text =
+                            Paragraph::new(&*app.options[app.selected.unwrap()].1)
+                                .block(description)
+                                .wrap(Wrap { trim: false });
+                        frame.render_widget(description_text, chunks[1]);
+                    }
+                    CurrentPopup::Add(_) => todo!(),
                 }
-                CurrentMode::Add(_) => todo!(),
-                CurrentMode::Description => unreachable!(),
             }
         }
-        CurrentMode::Description => todo!(),
+        CurrentScreen::Description => todo!(),
     }
 }
 

@@ -1,16 +1,12 @@
 //! The main module.
 //! implements App and all of its features
 
-/// Represents the current mode that
-/// the user is in
+/// The current screen that should be shown to
+/// behind all other popups
 #[derive(Debug)]
-pub enum CurrentMode {
+pub enum CurrentScreen {
     /// They are currently selecting the menu in th emiddle on the left
     Menu,
-    /// They were in the Menu, but they are now editing an entry
-    Edit(CurrentEdit),
-    /// Add a new item to the todo list
-    Add(CurrentEdit),
     /// The description section in fullscreen
     Description,
 }
@@ -19,7 +15,9 @@ pub enum CurrentMode {
 /// Contains all state information of the app
 pub struct App {
     /// The screen that the user is currently selecting
-    pub current_mode: CurrentMode,
+    pub current_mode: CurrentScreen,
+    /// The popup that is shown above everything
+    pub popup: Option<CurrentPopup>,
     /// The title of the application
     pub title: String,
     /// The currently selected item (An index)
@@ -34,7 +32,8 @@ impl Default for App {
     fn default() -> Self {
         App {
             layout: Layout::Small,
-            current_mode: CurrentMode::Menu,
+            current_mode: CurrentScreen::Menu,
+            popup: None,
             selected: None,
             options: Vec::new(),
             title: String::new(),
@@ -76,7 +75,7 @@ pub enum Layout {
     Small,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 /// An enum containing an information about what
 /// Datum is currently being edited
 pub enum CurrentEdit {
@@ -84,4 +83,13 @@ pub enum CurrentEdit {
     Title,
     #[allow(missing_docs)]
     Body,
+}
+
+/// The current popup to be shown
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CurrentPopup {
+    /// They were in the Menu, but they are now editing an entry
+    Edit(CurrentEdit),
+    /// Add a new item to the todo list
+    Add(CurrentEdit),
 }
