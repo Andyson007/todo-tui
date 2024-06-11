@@ -11,6 +11,8 @@ pub enum CurrentMode {
     Edit(CurrentEdit),
     /// Add a new item to the todo list
     Add(CurrentEdit),
+    /// The description section in fullscreen
+    Description,
 }
 
 #[derive(Debug)]

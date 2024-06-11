@@ -108,6 +108,9 @@ where
                         CurrentEdit::Title => app.options[app.selected.unwrap()].0.push(x),
                         CurrentEdit::Body => app.options[app.selected.unwrap()].1.push(x),
                     },
+                    KeyCode::Enter => {
+                        app.current_mode = CurrentMode::Menu;
+                    }
                     KeyCode::Tab => {
                         *curr = match curr {
                             CurrentEdit::Title => CurrentEdit::Body,
@@ -117,6 +120,7 @@ where
                     _ => (),
                 },
                 CurrentMode::Add(_) => todo!(),
+                CurrentMode::Description => todo!(),
             }
         }
     }

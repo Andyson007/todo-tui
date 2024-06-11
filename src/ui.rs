@@ -68,8 +68,10 @@ pub fn ui(frame: &mut Frame, app: &App) {
                     frame.render_widget(description_text, chunks[1]);
                 }
                 CurrentMode::Add(_) => todo!(),
+                CurrentMode::Description => unreachable!(),
             }
         }
+        CurrentMode::Description => todo!(),
     }
 }
 
