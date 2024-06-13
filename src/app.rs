@@ -23,7 +23,7 @@ pub struct App {
     /// The currently selected item (An index)
     pub selected: Option<usize>,
     /// All selectable options
-    pub options: Vec<(String, String)>,
+    pub options: Vec<(Box<str>, Box<str>)>,
     /// The current layout of the screen
     pub layout: Layout,
 }
@@ -66,8 +66,8 @@ impl App {
         } else {
             let option = self.options[self.selected.unwrap()].clone();
             self.popup = Some(Popup::Edit {
-                title: option.0,
-                description: option.1,
+                title: option.0.to_string(),
+                description: option.1.to_string(),
                 editing: CurrentEdit::Title,
             })
         }

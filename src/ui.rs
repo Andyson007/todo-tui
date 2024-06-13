@@ -129,7 +129,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
 /// draws the associated inforation with the current item
 fn draw_info(frame: &mut Frame, chunk: Rect, app: &App) {
     let info = Paragraph::new(Text::raw(match app.selected {
-        Some(x) => app.options[x].1.to_owned(),
+        Some(x) => app.options[x].1.to_string(),
         None => "".to_string(),
     }))
     .block(Block::bordered())
@@ -154,7 +154,7 @@ fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App) {
     frame.render_widget(title, chunks[0]);
 
     let mut state = ListState::with_selected(ListState::default(), app.selected);
-    let list = List::new(app.options.iter().map(|x| x.0.to_owned()))
+    let list = List::new(app.options.iter().map(|x| x.0.to_string()))
         .block(Block::bordered().title("List"))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
 

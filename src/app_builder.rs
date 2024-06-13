@@ -16,9 +16,15 @@ impl AppBuilder {
     }
 
     /// Set the options of the app
-    pub fn with_options(self, options: impl Into<Vec<(String, String)>>) -> Self {
+    pub fn with_options<T>(self, options: impl IntoIterator<Item = (T, T)>) -> Self
+    where
+        T: Into<String>,
+    {
         Self(App {
-            options: options.into(),
+            options: options
+                .into_iter()
+                .map(|(a, b)| (a.into().into_boxed_str(), b.into().into_boxed_str()))
+                .collect::<Vec<(Box<str>, Box<str>)>>(),
             ..self.0
         })
     }
