@@ -1,0 +1,8 @@
+{
+  "?": "Show this help menu",
+  "j": "Move down",
+  "k": "Move up",
+  "q": "quit",
+  "a": "add new item",
+  "e": "edit item"
+}

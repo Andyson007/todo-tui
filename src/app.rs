@@ -1,10 +1,12 @@
 //! The main module.
 //! implements App and all of its features
 
+use crate::help::Help;
+
 /// The current screen that should be shown to
 /// behind all other popups
 #[derive(Debug)]
-pub enum CurrentScreen {
+pub enum CurrentSelection {
     /// They are currently selecting the menu in th emiddle on the left
     Menu,
     /// The description section in fullscreen
@@ -15,7 +17,7 @@ pub enum CurrentScreen {
 /// Contains all state information of the app
 pub struct App {
     /// The screen that the user is currently selecting
-    pub current_mode: CurrentScreen,
+    pub current_selection: CurrentSelection,
     /// The popup that is shown above everything
     pub popup: Option<Popup>,
     /// The title of the application
@@ -23,20 +25,23 @@ pub struct App {
     /// The currently selected item (An index)
     pub selected: Option<usize>,
     /// All selectable options
-    pub options: Vec<(Box<str>, Box<str>)>,
+    pub options: Vec<(Box<str>, Box<str>, usize)>,
     /// The current layout of the screen
     pub layout: Layout,
+    /// The help menu stored
+    pub help: Help,
 }
 
 impl Default for App {
     fn default() -> Self {
         App {
             layout: Layout::Small,
-            current_mode: CurrentScreen::Menu,
+            current_selection: CurrentSelection::Menu,
             popup: None,
             selected: None,
             options: Vec::new(),
             title: String::new(),
+            help: Help::parse("./help.json").unwrap()
         }
     }
 }
@@ -120,6 +125,12 @@ pub enum Popup {
         /// The index of the currently edited item if its empty then a new item is being added
         to_change: Option<usize>,
     },
+
+    /// Show help menu
+    Help(
+        /// the index of the currently selected item
+        usize,
+    ),
 }
 
 /// What part of a todo-item are you editing?

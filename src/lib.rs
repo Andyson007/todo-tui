@@ -10,3 +10,4 @@ pub mod app;
 pub mod app_builder;
 pub mod errors;
 pub mod ui;
+pub mod help;

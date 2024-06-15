@@ -23,8 +23,8 @@ impl AppBuilder {
         Self(App {
             options: options
                 .into_iter()
-                .map(|(a, b)| (a.into().into_boxed_str(), b.into().into_boxed_str()))
-                .collect::<Vec<(Box<str>, Box<str>)>>(),
+                .map(|(a, b)| (a.into().into_boxed_str(), b.into().into_boxed_str(), 0))
+                .collect::<Vec<(Box<str>, Box<str>, usize)>>(),
             ..self.0
         })
     }

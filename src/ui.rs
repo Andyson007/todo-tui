@@ -11,24 +11,26 @@ use ratatui::{
 
 use ratatui::{prelude::*, widgets::*};
 
-use crate::app::{App, CurrentEdit, CurrentScreen, Popup};
+use crate::{
+    app::{App, CurrentEdit, CurrentSelection, Popup},
+    help::query,
+};
 
 /// Draws the ui.
 /// It probably assumes a lot about the
 /// terminal being in raw mode etc.
 pub fn ui(frame: &mut Frame, app: &App) {
-    match app.current_mode {
-        CurrentScreen::Menu => {
+    match &app.current_selection {
+        a @ (CurrentSelection::Menu | CurrentSelection::Description) => {
             let chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(frame.size());
 
-            draw_selection(frame, chunks[0], app);
-            draw_info(frame, chunks[1], app);
+            draw_selection(frame, chunks[0], app, a);
+            draw_info(frame, chunks[1], app, a);
             // Used to draw on top of the menu
         }
-        CurrentScreen::Description => todo!(),
     }
     if let Some(popup) = &app.popup {
         match popup {
@@ -40,24 +42,48 @@ pub fn ui(frame: &mut Frame, app: &App) {
             } => {
                 render_title_desc(title, description, editing, frame);
             }
+            Popup::Help(selected) => {
+                let area = centered_rect(60, 60, frame.size());
+                frame.render_widget(Clear, area);
+                let text = List::new(
+                    query(&app.help.help_items, "test".to_string())
+                        .into_iter()
+                        .map(|x| x.1 .0.to_string()),
+                )
+                .block(Block::default().title("Help").borders(Borders::ALL));
+                frame.render_widget(text, area)
+            }
         }
     }
 }
 
 /// draws the associated inforation with the current item
-fn draw_info(frame: &mut Frame, chunk: Rect, app: &App) {
+fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelection) {
     let info = Paragraph::new(Text::raw(match app.selected {
         Some(x) => app.options[x].1.to_string(),
         None => "".to_string(),
     }))
-    .block(Block::bordered())
-    .wrap(Wrap { trim: false });
+    .block(
+        Block::bordered().style(if matches!(selection, CurrentSelection::Description) {
+            Color::Green
+        } else {
+            Color::White
+        }),
+    )
+    .wrap(Wrap { trim: false })
+    .scroll((
+        match app.selected {
+            Some(x) => app.options[x].2.try_into().unwrap(),
+            None => 0,
+        },
+        0,
+    ));
 
     frame.render_widget(info, chunk);
 }
 
 /// Draws all things that are interactable
-fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App) {
+fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelection) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(1)])
@@ -73,7 +99,14 @@ fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App) {
 
     let mut state = ListState::with_selected(ListState::default(), app.selected);
     let list = List::new(app.options.iter().map(|x| x.0.to_string()))
-        .block(Block::bordered().title("List"))
+        .block(Block::bordered().title("List").style(
+            if matches!(selection, CurrentSelection::Menu) {
+                Color::Green
+            } else {
+                Color::White
+            },
+        ))
+        .scroll_padding(3)
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
 
     frame.render_stateful_widget(list, chunks[1], &mut state);
