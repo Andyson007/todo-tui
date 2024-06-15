@@ -70,7 +70,7 @@ impl App {
                 title: option.0.to_string(),
                 description: option.1.to_string(),
                 editing: CurrentEdit::Title,
-                to_change: loc,
+                to_change: Some(loc),
             })
         }
     }
@@ -80,10 +80,11 @@ impl App {
             // FIXME:
             panic!("Bad popup state")
         } else {
-            self.popup = Some(Popup::Add {
+            self.popup = Some(Popup::Edit {
                 title: String::new(),
                 description: String::new(),
                 editing: CurrentEdit::Title,
+                to_change: None,
             })
         }
     }
@@ -108,15 +109,6 @@ pub enum Layout {
 /// State data for a popup
 #[derive(Debug)]
 pub enum Popup {
-    /// You are about to add an item
-    Add {
-        /// The title of the item
-        title: String,
-        /// The description of the item
-        description: String,
-        /// The currently highlighted/edited part of the popup
-        editing: CurrentEdit,
-    },
     /// You are editing an item
     Edit {
         /// The title of the item
@@ -125,8 +117,8 @@ pub enum Popup {
         description: String,
         /// The currently highlighted/edited part of the popup
         editing: CurrentEdit,
-        /// The index of the currently edited item
-        to_change: usize,
+        /// The index of the currently edited item if its empty then a new item is being added
+        to_change: Option<usize>,
     },
 }
 

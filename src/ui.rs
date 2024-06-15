@@ -38,109 +38,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
                 editing,
                 ..
             } => {
-                let area = centered_rect(50, 50, frame.size());
-                frame.render_widget(Clear, area);
-
-                let popup_block = Block::default().title("Edit").borders(Borders::ALL);
-                frame.render_widget(popup_block, area);
-
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(3), Constraint::Min(1)])
-                    .margin(1)
-                    .split(area);
-
-                let title_block = Block::default()
-                    .title("Title")
-                    .borders(Borders::ALL)
-                    .border_style(
-                        Style::default().fg(if matches!(editing, CurrentEdit::Title) {
-                            Color::Green
-                        } else {
-                            Color::White
-                        }),
-                    );
-                let title_text = Paragraph::new(
-                    title
-                        .chars()
-                        .chain(if matches!(editing, CurrentEdit::Title) {
-                            Some('█')
-                        } else {
-                            None
-                        })
-                        .collect::<String>(),
-                )
-                .block(title_block);
-                frame.render_widget(title_text, chunks[0]);
-
-                let description_block = Block::default()
-                    .title("Description")
-                    .borders(Borders::ALL)
-                    .border_style(
-                        Style::default().fg(if matches!(editing, CurrentEdit::Body) {
-                            Color::Green
-                        } else {
-                            Color::White
-                        }),
-                    );
-                let description_text = Paragraph::new(
-                    description
-                        .chars()
-                        .chain(if matches!(editing, CurrentEdit::Body) {
-                            Some('█')
-                        } else {
-                            None
-                        })
-                        .collect::<String>(),
-                )
-                .block(description_block)
-                .wrap(Wrap { trim: false });
-                frame.render_widget(description_text, chunks[1]);
-            }
-            Popup::Add {
-                title,
-                description,
-                editing,
-            } => {
-                let area = centered_rect(50, 50, frame.size());
-                frame.render_widget(Clear, area);
-
-                let popup_block = Block::default().title("Edit").borders(Borders::ALL);
-                frame.render_widget(popup_block, area);
-
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(3), Constraint::Min(1)])
-                    .margin(1)
-                    .split(area);
-
-                let title_block = Block::default()
-                    .title("Title")
-                    .borders(Borders::ALL)
-                    .border_style(
-                        Style::default().fg(if matches!(editing, CurrentEdit::Title) {
-                            Color::Green
-                        } else {
-                            Color::White
-                        }),
-                    );
-                let title_text = Paragraph::new(title.clone()).block(title_block);
-                frame.render_widget(title_text, chunks[0]);
-
-                let description_block = Block::default()
-                    .title("Description")
-                    .borders(Borders::ALL)
-                    .border_style(
-                        Style::default().fg(if matches!(editing, CurrentEdit::Body) {
-                            Color::Green
-                        } else {
-                            Color::White
-                        }),
-                    );
-                let description_text = Paragraph::new(description.clone())
-                    .block(description_block)
-                    .wrap(Wrap { trim: false });
-                frame.render_widget(description_text, chunks[1]);
+                render_title_desc(title, description, editing, frame);
             }
         }
     }
@@ -202,4 +100,65 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(popup_layout[1])[1] // Return the middle chunk
+}
+
+fn render_title_desc(title: &str, description: &str, editing: &CurrentEdit, frame: &mut Frame) {
+    let area = centered_rect(50, 50, frame.size());
+    frame.render_widget(Clear, area);
+
+    let popup_block = Block::default().title("Edit").borders(Borders::ALL);
+    frame.render_widget(popup_block, area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(1)])
+        .margin(1)
+        .split(area);
+
+    let title_block = Block::default()
+        .title("Title")
+        .borders(Borders::ALL)
+        .border_style(
+            Style::default().fg(if matches!(editing, CurrentEdit::Title) {
+                Color::Green
+            } else {
+                Color::White
+            }),
+        );
+    let title_text = Paragraph::new(
+        title
+            .chars()
+            .chain(if matches!(editing, CurrentEdit::Title) {
+                Some('█')
+            } else {
+                None
+            })
+            .collect::<String>(),
+    )
+    .block(title_block);
+    frame.render_widget(title_text, chunks[0]);
+
+    let description_block = Block::default()
+        .title("Description")
+        .borders(Borders::ALL)
+        .border_style(
+            Style::default().fg(if matches!(editing, CurrentEdit::Body) {
+                Color::Green
+            } else {
+                Color::White
+            }),
+        );
+    let description_text = Paragraph::new(
+        description
+            .chars()
+            .chain(if matches!(editing, CurrentEdit::Body) {
+                Some('█')
+            } else {
+                None
+            })
+            .collect::<String>(),
+    )
+    .block(description_block)
+    .wrap(Wrap { trim: false });
+    frame.render_widget(description_text, chunks[1]);
 }

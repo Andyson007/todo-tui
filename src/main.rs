@@ -82,10 +82,17 @@ where
                         ),
                         KeyCode::Esc => app.popup = None,
                         KeyCode::Enter => {
-                            app.options[*to_change] = (
-                                title.to_owned().into_boxed_str(),
-                                description.to_owned().into_boxed_str(),
-                            );
+                            if let Some(x) = to_change {
+                                app.options[*x] = (
+                                    title.to_owned().into_boxed_str(),
+                                    description.to_owned().into_boxed_str(),
+                                );
+                            } else {
+                                app.options.push((
+                                    title.to_owned().into_boxed_str(),
+                                    description.to_owned().into_boxed_str(),
+                                ));
+                            }
                             app.popup = None;
                         }
                         KeyCode::Tab => {
@@ -101,7 +108,6 @@ where
                         .push(x),
                         _ => (),
                     },
-                    Popup::Add { .. } => todo!(),
                 }
             } else {
                 match app.current_mode {
