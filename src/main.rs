@@ -28,10 +28,10 @@ fn main() -> color_eyre::Result<()> {
         .with_title("AndyCo")
         .with_options([
             (
-                "<C-w> support".to_string(),
-                "This todo-app doesn't delete full words when pressing <C-w>".to_string(),
+                "<C-w> support",
+                "This todo-app doesn't delete full words when pressing <C-w>",
             ),
-            ("desc".to_string(), "cool2".to_string()),
+            ("desc", "cool2"),
         ])
         .into();
     let res = run_app(&mut terminal, &mut app);
