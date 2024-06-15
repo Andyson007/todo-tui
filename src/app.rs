@@ -64,11 +64,13 @@ impl App {
             // FIXME:
             panic!("Bad popup state")
         } else {
-            let option = self.options[self.selected.unwrap()].clone();
+            let loc = self.selected.unwrap();
+            let option = self.options[loc].clone();
             self.popup = Some(Popup::Edit {
                 title: option.0.to_string(),
                 description: option.1.to_string(),
                 editing: CurrentEdit::Title,
+                to_change: loc,
             })
         }
     }
@@ -78,7 +80,7 @@ impl App {
             // FIXME:
             panic!("Bad popup state")
         } else {
-            self.popup = Some(Popup::Edit {
+            self.popup = Some(Popup::Add {
                 title: String::new(),
                 description: String::new(),
                 editing: CurrentEdit::Title,
@@ -123,6 +125,8 @@ pub enum Popup {
         description: String,
         /// The currently highlighted/edited part of the popup
         editing: CurrentEdit,
+        /// The index of the currently edited item
+        to_change: usize,
     },
 }
 

@@ -36,6 +36,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
                 title,
                 description,
                 editing,
+                ..
             } => {
                 let area = centered_rect(50, 50, frame.size());
                 frame.render_widget(Clear, area);
@@ -59,7 +60,17 @@ pub fn ui(frame: &mut Frame, app: &App) {
                             Color::White
                         }),
                     );
-                let title_text = Paragraph::new(title.clone()).block(title_block);
+                let title_text = Paragraph::new(
+                    title
+                        .chars()
+                        .chain(if matches!(editing, CurrentEdit::Title) {
+                            Some('█')
+                        } else {
+                            None
+                        })
+                        .collect::<String>(),
+                )
+                .block(title_block);
                 frame.render_widget(title_text, chunks[0]);
 
                 let description_block = Block::default()
@@ -72,9 +83,18 @@ pub fn ui(frame: &mut Frame, app: &App) {
                             Color::White
                         }),
                     );
-                let description_text = Paragraph::new(description.clone())
-                    .block(description_block)
-                    .wrap(Wrap { trim: false });
+                let description_text = Paragraph::new(
+                    description
+                        .chars()
+                        .chain(if matches!(editing, CurrentEdit::Body) {
+                            Some('█')
+                        } else {
+                            None
+                        })
+                        .collect::<String>(),
+                )
+                .block(description_block)
+                .wrap(Wrap { trim: false });
                 frame.render_widget(description_text, chunks[1]);
             }
             Popup::Add {

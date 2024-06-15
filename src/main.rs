@@ -71,6 +71,7 @@ where
                         ref mut title,
                         ref mut description,
                         ref mut editing,
+                        to_change,
                     } => match key.code {
                         KeyCode::Backspace => drop(
                             match editing {
@@ -80,7 +81,13 @@ where
                             .pop(),
                         ),
                         KeyCode::Esc => app.popup = None,
-                        KeyCode::Enter => app.popup = None,
+                        KeyCode::Enter => {
+                            app.options[*to_change] = (
+                                title.to_owned().into_boxed_str(),
+                                description.to_owned().into_boxed_str(),
+                            );
+                            app.popup = None;
+                        }
                         KeyCode::Tab => {
                             *editing = match editing {
                                 CurrentEdit::Title => CurrentEdit::Body,
