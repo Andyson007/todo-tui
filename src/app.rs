@@ -1,8 +1,6 @@
 //! The main module.
 //! implements App and all of its features
 
-use std::io;
-
 use crossterm::event::KeyCode;
 
 use crate::help::Help;
@@ -46,7 +44,7 @@ pub struct App {
 
 impl Default for App {
     fn default() -> Self {
-        App {
+        Self {
             layout: Layout::Small,
             current_selection: CurrentSelection::Menu,
             popup: None,
@@ -61,7 +59,7 @@ impl Default for App {
 
 impl App {
     /// Changes what item is selected.
-    pub fn change_menu_item(&mut self, dir: Direction) {
+    pub fn change_menu_item(&mut self, dir: &Direction) {
         let len = self.options.len();
         if len == 0 {
             return;
@@ -71,40 +69,41 @@ impl App {
             Direction::Down => {
                 self.selected = self
                     .selected
-                    .map_or(Some(self.options.len() - 1), |x| Some((x + len - 1) % len))
+                    .map_or(Some(self.options.len() - 1), |x| Some((x + len - 1) % len));
             }
         }
     }
 
     /// Sets the popup field sensibly
+    ///
+    /// # Panics
+    /// This function panics when opening up a popup when already in a popup
     pub fn edit(&mut self) {
-        if self.popup.is_some() || self.selected.is_none() {
-            // FIXME:
-            panic!("Bad popup state")
-        } else {
-            let loc = self.selected.unwrap();
-            let option = self.options[loc].clone();
-            self.popup = Some(Popup::Edit {
-                title: option.0.to_string(),
-                description: option.1.to_string(),
-                editing: CurrentEdit::Title,
-                to_change: Some(loc),
-            })
+        assert!(self.popup.is_none(), "we can't already be in a popup");
+        if self.selected.is_none() {
+            return;
         }
+        let loc = self.selected.unwrap();
+        let option = self.options[loc].clone();
+        self.popup = Some(Popup::Edit {
+            title: option.0.to_string(),
+            description: option.1.to_string(),
+            editing: CurrentEdit::Title,
+            to_change: Some(loc),
+        });
     }
     /// Sets the state to Add a new item sensibly
+    ///
+    /// # Panics
+    /// Panics when opening a popup whilst already being in a popup
     pub fn add(&mut self) {
-        if self.popup.is_some() {
-            // FIXME:
-            panic!("Bad popup state")
-        } else {
-            self.popup = Some(Popup::Edit {
-                title: String::new(),
-                description: String::new(),
-                editing: CurrentEdit::Title,
-                to_change: None,
-            })
-        }
+        assert!(self.popup.is_none(), "we can't already be in a popup");
+        self.popup = Some(Popup::Edit {
+            title: String::new(),
+            description: String::new(),
+            editing: CurrentEdit::Title,
+            to_change: None,
+        });
     }
 }
 
@@ -161,9 +160,10 @@ enum PopupReturnAction {
 }
 
 impl Popup {
-    fn handle_input(&mut self, key: KeyCode) -> PopupReturnAction {
+    // HACK: This should not have to take help as an input
+    fn handle_input(&mut self, key: KeyCode, help: &Help) -> PopupReturnAction {
         match self {
-            Popup::Edit {
+            Self::Edit {
                 ref mut title,
                 ref mut description,
                 ref mut editing,
@@ -178,22 +178,25 @@ impl Popup {
                 ),
                 KeyCode::Esc => return PopupReturnAction::Exit,
                 KeyCode::Enter => {
-                    return if let Some(x) = to_change {
-                        PopupReturnAction::Edit(
-                            *x,
-                            (
+                    return to_change.as_mut().map_or_else(
+                        || {
+                            PopupReturnAction::Add((
                                 title.to_owned().into_boxed_str(),
                                 description.to_owned().into_boxed_str(),
                                 0,
-                            ),
-                        )
-                    } else {
-                        PopupReturnAction::Add((
-                            title.to_owned().into_boxed_str(),
-                            description.to_owned().into_boxed_str(),
-                            0,
-                        ))
-                    }
+                            ))
+                        },
+                        |x| {
+                            PopupReturnAction::Edit(
+                                *x,
+                                (
+                                    title.to_owned().into_boxed_str(),
+                                    description.to_owned().into_boxed_str(),
+                                    0,
+                                ),
+                            )
+                        },
+                    )
                 }
                 KeyCode::Tab => {
                     *editing = match editing {
@@ -208,12 +211,13 @@ impl Popup {
                 .push(x),
                 _ => (),
             },
-            Popup::Help(ref mut x) => match key {
+            Self::Help(ref mut x) => match key {
                 KeyCode::Char('q') => return PopupReturnAction::Exit,
-                // KeyCode::Char('j') => *x += 1,
-                // FIXME: This can't do a bounchs check because it doesn't have access to the help
-                // data. I'll have to change popup to be a struct with a popupstate within
-                KeyCode::Char('j') => todo!(),
+                KeyCode::Char('j') => {
+                    if *x != help.0.len() - 1 {
+                        *x += 1;
+                    }
+                }
                 KeyCode::Char('k') => *x = x.saturating_sub(1),
                 _ => (),
             },
@@ -240,28 +244,36 @@ pub enum Substate {
 
 impl App {
     /// Handles an input
-    pub fn handle_input(&mut self, key: KeyCode) -> io::Result<Option<bool>> {
+    ///
+    /// # Errors
+    pub fn handle_input(&mut self, key: KeyCode) -> Option<bool> {
         if self.substate.as_ref().is_some_and(|x| x.0) {
             self.handle_substate(key);
         } else if let Some(ref mut popup) = self.popup {
-            match popup.handle_input(key) {
+            match popup.handle_input(key, &self.help) {
                 PopupReturnAction::Exit => self.popup = None,
-                PopupReturnAction::Nothing => {},
-                PopupReturnAction::Edit(x, new_val) => self.options[x] = new_val,
-                PopupReturnAction::Add(new_val) => self.options.push(new_val),
+                PopupReturnAction::Nothing => {}
+                PopupReturnAction::Edit(x, new_val) => {
+                    self.options[x] = new_val;
+                    self.popup = None;
+                }
+                PopupReturnAction::Add(new_val) => {
+                    self.options.push(new_val);
+                    self.popup = None;
+                }
             };
         } else {
             match self.current_selection {
                 CurrentSelection::Menu => match key {
                     // quit
-                    KeyCode::Char('q') => return Ok(Some(true)),
+                    KeyCode::Char('q') => return Some(true),
                     //
                     KeyCode::Char('?') => self.popup = Some(Popup::Help(0)),
 
                     // Vim motion + Down key
-                    KeyCode::Char('j') | KeyCode::Down => self.change_menu_item(Direction::Up),
+                    KeyCode::Char('j') | KeyCode::Down => self.change_menu_item(&Direction::Up),
                     // Vim motion + Down key
-                    KeyCode::Char('k') | KeyCode::Up => self.change_menu_item(Direction::Down),
+                    KeyCode::Char('k') | KeyCode::Up => self.change_menu_item(&Direction::Down),
                     // Enter edit mode
                     KeyCode::Char('e') if self.selected.is_some() => self.edit(),
                     // Enter add mode (Add a new item)
@@ -269,7 +281,7 @@ impl App {
                     // Focus the description
                     KeyCode::Enter => {
                         if self.selected.is_some() {
-                            self.current_selection = CurrentSelection::Description
+                            self.current_selection = CurrentSelection::Description;
                         }
                     }
 
@@ -279,7 +291,7 @@ impl App {
                         self.options.remove(selected);
                         if selected == self.options.len() {
                             if self.options.is_empty() {
-                                self.selected = None
+                                self.selected = None;
                             } else {
                                 self.selected = Some(selected - 1);
                             }
@@ -288,30 +300,42 @@ impl App {
                     _ => (),
                 },
 
-                CurrentSelection::Description => match key {
-                    // quit
-                    KeyCode::Char('q') => self.current_selection = CurrentSelection::Menu,
-                    // Vim motions
-                    KeyCode::Char('j') | KeyCode::Down => {
-                        if self.selected.unwrap() != self.options.len() - 1 {
-                            self.options[self.selected.unwrap()].2 += 1
+                CurrentSelection::Description => {
+                    match key {
+                        // quit
+                        KeyCode::Char('q') => self.current_selection = CurrentSelection::Menu,
+                        // Vim motions
+                        KeyCode::Char('j') | KeyCode::Down => {
+                            if self.selected? != self.options.len() - 1 {
+                                self.options[self.selected?].2 += 1;
+                            }
                         }
+                        KeyCode::Char('k') | KeyCode::Up => {
+                            self.options[self.selected?].2 =
+                                self.options[self.selected?].2.saturating_sub(1);
+                        }
+                        _ => (),
                     }
-                    KeyCode::Char('k') | KeyCode::Up => {
-                        self.options[self.selected.unwrap()].2 =
-                            self.options[self.selected.unwrap()].2.saturating_sub(1)
-                    }
-                    _ => (),
-                },
+                }
             }
         }
-        Ok(None)
+        None
     }
 
     /// Handles inputs when a substate is focused
     fn handle_substate(&mut self, key: KeyCode) {
-        let Some((true, ref mut substate)) = self.substate else {
+        let Some((ref mut editing @ false, ref mut substate)) = self.substate else {
             return;
         };
+        match substate {
+            Substate::Filter(ref mut search) => match key {
+                KeyCode::Enter => *editing = false,
+                KeyCode::Esc => {
+                    self.substate = None;
+                }
+                KeyCode::Char(c) => search.push(c),
+                _ => (),
+            },
+        }
     }
 }

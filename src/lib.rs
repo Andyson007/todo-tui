@@ -5,6 +5,7 @@
     missing_fragment_specifier,
     missing_debug_implementations
 )]
+#![warn(clippy::pedantic, clippy::nursery)]
 
 pub mod app;
 pub mod app_builder;
@@ -14,12 +15,13 @@ pub mod ui;
 
 /// Returns an ordered list how alike it is to
 /// the search query
-pub fn query<T>(iter: Vec<T>, query: String) -> Vec<(usize, T)>
+#[must_use]
+pub fn query<T>(iter: Vec<T>, query: &str) -> Vec<(usize, T)>
 where
     T: Score,
 {
     let mut indexed = iter.into_iter().enumerate().collect::<Vec<_>>();
-    indexed.sort_by_key(|x| x.1.score(query.as_str()));
+    indexed.sort_by_key(|x| x.1.score(query));
     indexed
 }
 

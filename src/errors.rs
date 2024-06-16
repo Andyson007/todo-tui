@@ -7,8 +7,14 @@ use crossterm::{
     terminal::{disable_raw_mode, LeaveAlternateScreen},
 };
 
-/// This replaces the standard color_eyre panic and error hooks with hooks that
+/// This replaces the standard `color_eyre` panic and error hooks with hooks that
 /// restore the terminal before printing the panic or error.
+///
+/// # Panics
+/// It colud panic if `disable_raw_mode` returned an error unhandelable
+///
+/// # Errors
+/// Don't think they are handelable
 pub fn install_hooks() -> color_eyre::Result<()> {
     let (panic_hook, eyre_hook) = HookBuilder::default().into_hooks();
 

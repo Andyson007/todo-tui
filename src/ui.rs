@@ -9,7 +9,10 @@ use ratatui::{
     Frame,
 };
 
-use ratatui::{prelude::*, widgets::*};
+use ratatui::{
+    prelude::*,
+    widgets::{Clear, ListState, Wrap},
+};
 
 use crate::{
     app::{App, CurrentEdit, CurrentSelection, Popup},
@@ -50,7 +53,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
                     .constraints(Constraint::from_percentages([30, 70]))
                     .split(area);
                 let mut state = ListState::with_selected(ListState::default(), Some(*selected));
-                let opts = query(app.help.0.clone(), "test".to_string());
+                let opts = query(app.help.0.clone(), "test");
                 let description = opts[*selected].clone();
                 let text = List::new(opts.into_iter().map(|x| x.1 .0 .0.to_string()))
                     .block(Block::default().title("Help").borders(Borders::ALL))
@@ -59,7 +62,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
                 frame.render_stateful_widget(text, chunks[0], &mut state);
                 let description = Paragraph::new(Text::raw(description.1 .0 .1.to_string()))
                     .block(Block::default().title("Desc").borders(Borders::ALL));
-                frame.render_widget(description, chunks[1])
+                frame.render_widget(description, chunks[1]);
             }
         }
     }
@@ -67,10 +70,10 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
 /// draws the associated inforation with the current item
 fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelection) {
-    let info = Paragraph::new(Text::raw(match app.selected {
-        Some(x) => app.options[x].1.to_string(),
-        None => "".to_string(),
-    }))
+    let info = Paragraph::new(Text::raw(
+        app.selected
+            .map_or_else(String::new, |x| app.options[x].1.to_string()),
+    ))
     .block(
         Block::bordered().style(if matches!(selection, CurrentSelection::Description) {
             Color::Green
@@ -80,10 +83,7 @@ fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelec
     )
     .wrap(Wrap { trim: false })
     .scroll((
-        match app.selected {
-            Some(x) => app.options[x].2.try_into().unwrap(),
-            None => 0,
-        },
+        app.selected.map_or(0, |x| app.options[x].2.try_into().unwrap()),
         0,
     ));
 

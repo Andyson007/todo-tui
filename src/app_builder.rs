@@ -8,6 +8,7 @@ pub struct AppBuilder(App);
 
 impl AppBuilder {
     /// Set the title of the app
+    #[must_use]
     pub fn with_title(self, title: impl Into<String>) -> Self {
         Self(App {
             title: title.into(),
@@ -16,6 +17,7 @@ impl AppBuilder {
     }
 
     /// Set the options of the app
+    #[must_use]
     pub fn with_options<T>(self, options: impl IntoIterator<Item = (T, T)>) -> Self
     where
         T: Into<String>,
