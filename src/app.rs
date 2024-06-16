@@ -1,6 +1,10 @@
 //! The main module.
 //! implements App and all of its features
 
+use std::io;
+
+use crossterm::event::KeyCode;
+
 use crate::help::Help;
 
 /// The current screen that should be shown to
@@ -30,6 +34,9 @@ pub struct App {
     pub layout: Layout,
     /// The help menu stored
     pub help: Help,
+    /// a bool determining whether we are in the substate and
+    /// the information associated with it
+    pub substate: (bool, Option<Substate>),
 }
 
 impl Default for App {
@@ -41,7 +48,8 @@ impl Default for App {
             selected: None,
             options: Vec::new(),
             title: String::new(),
-            help: Help::parse("./help.json").unwrap()
+            help: Help::parse("./help.json").unwrap(),
+            substate: (false, None),
         }
     }
 }
@@ -139,4 +147,137 @@ pub enum Popup {
 pub enum CurrentEdit {
     Title,
     Body,
+}
+
+/// Contains substates that should be accessible on every screen
+#[derive(Debug)]
+pub enum Substate {
+    /// Filter for a result
+    /// 0: a string representing the current search query
+    Filter(String),
+}
+
+impl App {
+    /// Handles an input
+    pub fn handle_input(&mut self, key: KeyCode) -> io::Result<Option<bool>> {
+        if self.popup.is_some() {
+            self.handle_popup(key);
+        } else {
+            match self.current_selection {
+                CurrentSelection::Menu => match key {
+                    // quit
+                    KeyCode::Char('q') => return Ok(Some(true)),
+                    //
+                    KeyCode::Char('?') => self.popup = Some(Popup::Help(0)),
+
+                    // Vim motion + Down key
+                    KeyCode::Char('j') | KeyCode::Down => self.change_menu_item(Direction::Up),
+                    // Vim motion + Down key
+                    KeyCode::Char('k') | KeyCode::Up => self.change_menu_item(Direction::Down),
+                    // Enter edit mode
+                    KeyCode::Char('e') if self.selected.is_some() => self.edit(),
+                    // Enter add mode (Add a new item)
+                    KeyCode::Char('a') => self.add(),
+                    // Focus the description
+                    KeyCode::Enter => {
+                        if self.selected.is_some() {
+                            self.current_selection = CurrentSelection::Description
+                        }
+                    }
+
+                    // Delete entry
+                    KeyCode::Char('d') if self.selected.is_some() => {
+                        let selected = unsafe { self.selected.unwrap_unchecked() };
+                        self.options.remove(selected);
+                        if selected == self.options.len() {
+                            if self.options.is_empty() {
+                                self.selected = None
+                            } else {
+                                self.selected = Some(selected - 1);
+                            }
+                        }
+                    }
+                    _ => (),
+                },
+
+                CurrentSelection::Description => match key {
+                    // quit
+                    KeyCode::Char('q') => self.current_selection = CurrentSelection::Menu,
+                    // Vim motions
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        if self.selected.unwrap() != self.options.len() - 1 {
+                            self.options[self.selected.unwrap()].2 += 1
+                        }
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        self.options[self.selected.unwrap()].2 =
+                            self.options[self.selected.unwrap()].2.saturating_sub(1)
+                    }
+                    _ => (),
+                },
+            }
+        }
+        Ok(None)
+    }
+
+    fn handle_popup(&mut self, key: KeyCode) {
+        let Some(ref mut popup) = self.popup else {
+            return;
+        };
+        match popup {
+            Popup::Edit {
+                ref mut title,
+                ref mut description,
+                ref mut editing,
+                to_change,
+            } => match key {
+                KeyCode::Backspace => drop(
+                    match editing {
+                        CurrentEdit::Title => title,
+                        CurrentEdit::Body => description,
+                    }
+                    .pop(),
+                ),
+                KeyCode::Esc => self.popup = None,
+                KeyCode::Enter => {
+                    if let Some(x) = to_change {
+                        self.options[*x] = (
+                            title.to_owned().into_boxed_str(),
+                            description.to_owned().into_boxed_str(),
+                            0,
+                        );
+                    } else {
+                        self.options.push((
+                            title.to_owned().into_boxed_str(),
+                            description.to_owned().into_boxed_str(),
+                            0,
+                        ));
+                    }
+                    self.popup = None;
+                }
+                KeyCode::Tab => {
+                    *editing = match editing {
+                        CurrentEdit::Title => CurrentEdit::Body,
+                        CurrentEdit::Body => CurrentEdit::Title,
+                    }
+                }
+                KeyCode::Char(x) => match editing {
+                    CurrentEdit::Title => title,
+                    CurrentEdit::Body => description,
+                }
+                .push(x),
+                _ => (),
+            },
+            Popup::Help(ref mut x) => match key {
+                KeyCode::Char('q') => self.popup = None,
+                KeyCode::Char('j') => {
+                    if *x != self.help.0.len() - 1 {
+                        *x += 1
+                    }
+                }
+                KeyCode::Char('k') => *x = x.saturating_sub(1),
+                _ => (),
+            },
+        }
+    }
 }
