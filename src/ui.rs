@@ -13,7 +13,7 @@ use ratatui::{prelude::*, widgets::*};
 
 use crate::{
     app::{App, CurrentEdit, CurrentSelection, Popup},
-    help::query,
+    query,
 };
 
 /// Draws the ui.
@@ -45,13 +45,21 @@ pub fn ui(frame: &mut Frame, app: &App) {
             Popup::Help(selected) => {
                 let area = centered_rect(60, 60, frame.size());
                 frame.render_widget(Clear, area);
-                let text = List::new(
-                    query(&app.help.help_items, "test".to_string())
-                        .into_iter()
-                        .map(|x| x.1 .0.to_string()),
-                )
-                .block(Block::default().title("Help").borders(Borders::ALL));
-                frame.render_widget(text, area)
+                let chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints(Constraint::from_percentages([30, 70]))
+                    .split(area);
+                let mut state = ListState::with_selected(ListState::default(), Some(*selected));
+                let opts = query(app.help.0.clone(), "test".to_string());
+                let description = opts[*selected].clone();
+                let text = List::new(opts.into_iter().map(|x| x.1 .0 .0.to_string()))
+                    .block(Block::default().title("Help").borders(Borders::ALL))
+                    .scroll_padding(3)
+                    .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
+                frame.render_stateful_widget(text, chunks[0], &mut state);
+                let description = Paragraph::new(Text::raw(description.1 .0 .1.to_string()))
+                    .block(Block::default().title("Desc").borders(Borders::ALL));
+                frame.render_widget(description, chunks[1])
             }
         }
     }

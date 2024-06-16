@@ -9,5 +9,33 @@
 pub mod app;
 pub mod app_builder;
 pub mod errors;
-pub mod ui;
 pub mod help;
+pub mod ui;
+
+/// Returns an ordered list how alike it is to
+/// the search query
+pub fn query<T>(iter: Vec<T>, query: String) -> Vec<(usize, T)>
+where
+    T: Score,
+{
+    let mut indexed = iter.into_iter().enumerate().collect::<Vec<_>>();
+    indexed.sort_by_key(|x| x.1.score(query.as_str()));
+    indexed
+}
+
+/// Implements a scoring trait used for ordering the search items
+pub trait Score {
+    /// The scoring function it should return None if the
+    /// search item shouldn't be included in the final list
+    fn score(&self, query: &str) -> Option<i64>;
+}
+
+impl Score for String {
+    fn score(&self, query: &str) -> Option<i64> {
+        if self.contains(query) {
+            Some(1)
+        } else {
+            None
+        }
+    }
+}
