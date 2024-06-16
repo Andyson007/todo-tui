@@ -29,6 +29,11 @@ pub struct App {
     /// The currently selected item (An index)
     pub selected: Option<usize>,
     /// All selectable options
+    ///
+    /// 0: Title,
+    /// 1: Description
+    /// 2: Scroll height of this description
+    // FIXME: This should be Vec<(a, (b,c))> instead
     pub options: Vec<(Box<str>, Box<str>, usize)>,
     /// The current layout of the screen
     pub layout: Layout,
@@ -36,7 +41,7 @@ pub struct App {
     pub help: Help,
     /// a bool determining whether we are in the substate and
     /// the information associated with it
-    pub substate: (bool, Option<Substate>),
+    pub substate: Option<(bool, Substate)>,
 }
 
 impl Default for App {
@@ -49,7 +54,7 @@ impl Default for App {
             options: Vec::new(),
             title: String::new(),
             help: Help::parse("./help.json").unwrap(),
-            substate: (false, None),
+            substate: None,
         }
     }
 }
@@ -141,6 +146,82 @@ pub enum Popup {
     ),
 }
 
+enum PopupReturnAction {
+    /// Exit the Popup
+    Exit,
+    /// Do nothing
+    Nothing,
+    /// Edit the item
+    /// 0: the item to be edited
+    /// 1: its new value
+    Edit(usize, (Box<str>, Box<str>, usize)),
+    /// Add an item
+    /// The value to push
+    Add((Box<str>, Box<str>, usize)),
+}
+
+impl Popup {
+    fn handle_input(&mut self, key: KeyCode) -> PopupReturnAction {
+        match self {
+            Popup::Edit {
+                ref mut title,
+                ref mut description,
+                ref mut editing,
+                to_change,
+            } => match key {
+                KeyCode::Backspace => drop(
+                    match editing {
+                        CurrentEdit::Title => title,
+                        CurrentEdit::Body => description,
+                    }
+                    .pop(),
+                ),
+                KeyCode::Esc => return PopupReturnAction::Exit,
+                KeyCode::Enter => {
+                    return if let Some(x) = to_change {
+                        PopupReturnAction::Edit(
+                            *x,
+                            (
+                                title.to_owned().into_boxed_str(),
+                                description.to_owned().into_boxed_str(),
+                                0,
+                            ),
+                        )
+                    } else {
+                        PopupReturnAction::Add((
+                            title.to_owned().into_boxed_str(),
+                            description.to_owned().into_boxed_str(),
+                            0,
+                        ))
+                    }
+                }
+                KeyCode::Tab => {
+                    *editing = match editing {
+                        CurrentEdit::Title => CurrentEdit::Body,
+                        CurrentEdit::Body => CurrentEdit::Title,
+                    }
+                }
+                KeyCode::Char(x) => match editing {
+                    CurrentEdit::Title => title,
+                    CurrentEdit::Body => description,
+                }
+                .push(x),
+                _ => (),
+            },
+            Popup::Help(ref mut x) => match key {
+                KeyCode::Char('q') => return PopupReturnAction::Exit,
+                // KeyCode::Char('j') => *x += 1,
+                // FIXME: This can't do a bounchs check because it doesn't have access to the help
+                // data. I'll have to change popup to be a struct with a popupstate within
+                KeyCode::Char('j') => todo!(),
+                KeyCode::Char('k') => *x = x.saturating_sub(1),
+                _ => (),
+            },
+        }
+        PopupReturnAction::Nothing
+    }
+}
+
 /// What part of a todo-item are you editing?
 #[derive(Debug)]
 #[allow(missing_docs)]
@@ -160,8 +241,15 @@ pub enum Substate {
 impl App {
     /// Handles an input
     pub fn handle_input(&mut self, key: KeyCode) -> io::Result<Option<bool>> {
-        if self.popup.is_some() {
-            self.handle_popup(key);
+        if self.substate.as_ref().is_some_and(|x| x.0) {
+            self.handle_substate(key);
+        } else if let Some(ref mut popup) = self.popup {
+            match popup.handle_input(key) {
+                PopupReturnAction::Exit => self.popup = None,
+                PopupReturnAction::Nothing => {},
+                PopupReturnAction::Edit(x, new_val) => self.options[x] = new_val,
+                PopupReturnAction::Add(new_val) => self.options.push(new_val),
+            };
         } else {
             match self.current_selection {
                 CurrentSelection::Menu => match key {
@@ -220,64 +308,10 @@ impl App {
         Ok(None)
     }
 
-    fn handle_popup(&mut self, key: KeyCode) {
-        let Some(ref mut popup) = self.popup else {
+    /// Handles inputs when a substate is focused
+    fn handle_substate(&mut self, key: KeyCode) {
+        let Some((true, ref mut substate)) = self.substate else {
             return;
         };
-        match popup {
-            Popup::Edit {
-                ref mut title,
-                ref mut description,
-                ref mut editing,
-                to_change,
-            } => match key {
-                KeyCode::Backspace => drop(
-                    match editing {
-                        CurrentEdit::Title => title,
-                        CurrentEdit::Body => description,
-                    }
-                    .pop(),
-                ),
-                KeyCode::Esc => self.popup = None,
-                KeyCode::Enter => {
-                    if let Some(x) = to_change {
-                        self.options[*x] = (
-                            title.to_owned().into_boxed_str(),
-                            description.to_owned().into_boxed_str(),
-                            0,
-                        );
-                    } else {
-                        self.options.push((
-                            title.to_owned().into_boxed_str(),
-                            description.to_owned().into_boxed_str(),
-                            0,
-                        ));
-                    }
-                    self.popup = None;
-                }
-                KeyCode::Tab => {
-                    *editing = match editing {
-                        CurrentEdit::Title => CurrentEdit::Body,
-                        CurrentEdit::Body => CurrentEdit::Title,
-                    }
-                }
-                KeyCode::Char(x) => match editing {
-                    CurrentEdit::Title => title,
-                    CurrentEdit::Body => description,
-                }
-                .push(x),
-                _ => (),
-            },
-            Popup::Help(ref mut x) => match key {
-                KeyCode::Char('q') => self.popup = None,
-                KeyCode::Char('j') => {
-                    if *x != self.help.0.len() - 1 {
-                        *x += 1
-                    }
-                }
-                KeyCode::Char('k') => *x = x.saturating_sub(1),
-                _ => (),
-            },
-        }
     }
 }
