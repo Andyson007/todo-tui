@@ -29,12 +29,12 @@ pub struct App {
     /// All selectable options
     ///
     /// 0: Title,
-    /// 1: Description
-    /// 2: Scroll height of this description
-    // FIXME: This should be Vec<(a, (b,c))> instead
-    pub options: Vec<(Box<str>, Box<str>, usize)>,
+    /// 1.0: Description
+    /// 1.1: Scroll height of this description
+    #[allow(clippy::type_complexity)]
+    pub options: Vec<(Box<str>, (Box<str>, usize))>,
     /// The current layout of the screen
-    pub layout: Layout,
+    pub layout: ScreenLayout,
     /// The help menu stored
     pub help: Help,
     /// a bool determining whether we are in the substate and
@@ -45,7 +45,7 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         Self {
-            layout: Layout::Small,
+            layout: ScreenLayout::Small,
             current_selection: CurrentSelection::Menu,
             popup: None,
             selected: None,
@@ -87,7 +87,7 @@ impl App {
         let option = self.options[loc].clone();
         self.popup = Some(Popup::Edit {
             title: option.0.to_string(),
-            description: option.1.to_string(),
+            description: option.1 .0.to_string(),
             editing: CurrentEdit::Title,
             to_change: Some(loc),
         });
@@ -118,7 +118,7 @@ pub enum Direction {
 
 /// The current layout of the screen
 #[derive(Debug)]
-pub enum Layout {
+pub enum ScreenLayout {
     /// Everything is at its smallest size
     Small,
 }
@@ -153,10 +153,13 @@ enum PopupReturnAction {
     /// Edit the item
     /// 0: the item to be edited
     /// 1: its new value
-    Edit(usize, (Box<str>, Box<str>, usize)),
+    Edit(usize, (Box<str>, (Box<str>, usize))),
     /// Add an item
     /// The value to push
-    Add((Box<str>, Box<str>, usize)),
+    Add((Box<str>, (Box<str>, usize))),
+    /// Enter a substate
+    // TODO: Make it not override that substate
+    EnterSubState(Substate),
 }
 
 impl Popup {
@@ -182,8 +185,7 @@ impl Popup {
                         || {
                             PopupReturnAction::Add((
                                 title.to_owned().into_boxed_str(),
-                                description.to_owned().into_boxed_str(),
-                                0,
+                                (description.to_owned().into_boxed_str(), 0),
                             ))
                         },
                         |x| {
@@ -191,8 +193,7 @@ impl Popup {
                                 *x,
                                 (
                                     title.to_owned().into_boxed_str(),
-                                    description.to_owned().into_boxed_str(),
-                                    0,
+                                    (description.to_owned().into_boxed_str(), 0),
                                 ),
                             )
                         },
@@ -219,6 +220,9 @@ impl Popup {
                     }
                 }
                 KeyCode::Char('k') => *x = x.saturating_sub(1),
+                KeyCode::Char('/') => {
+                    return PopupReturnAction::EnterSubState(Substate::Filter(String::new()))
+                }
                 _ => (),
             },
         }
@@ -244,12 +248,11 @@ pub enum Substate {
 
 impl App {
     /// Handles an input
-    ///
-    /// # Errors
     pub fn handle_input(&mut self, key: KeyCode) -> Option<bool> {
-        if self.substate.as_ref().is_some_and(|x| x.0) {
-            self.handle_substate(key);
-        } else if let Some(ref mut popup) = self.popup {
+        if self.handle_substate(key) {
+            return None;
+        }
+        if let Some(ref mut popup) = self.popup {
             match popup.handle_input(key, &self.help) {
                 PopupReturnAction::Exit => self.popup = None,
                 PopupReturnAction::Nothing => {}
@@ -261,6 +264,7 @@ impl App {
                     self.options.push(new_val);
                     self.popup = None;
                 }
+                PopupReturnAction::EnterSubState(x) => self.substate = Some((true, x)),
             };
         } else {
             match self.current_selection {
@@ -297,6 +301,9 @@ impl App {
                             }
                         }
                     }
+                    KeyCode::Char('/') => {
+                        self.substate = Some((true, Substate::Filter(String::new())));
+                    }
                     _ => (),
                 },
 
@@ -307,12 +314,12 @@ impl App {
                         // Vim motions
                         KeyCode::Char('j') | KeyCode::Down => {
                             if self.selected? != self.options.len() - 1 {
-                                self.options[self.selected?].2 += 1;
+                                self.options[self.selected?].1 .1 += 1;
                             }
                         }
                         KeyCode::Char('k') | KeyCode::Up => {
-                            self.options[self.selected?].2 =
-                                self.options[self.selected?].2.saturating_sub(1);
+                            self.options[self.selected?].1 .1 =
+                                self.options[self.selected?].1 .1.saturating_sub(1);
                         }
                         _ => (),
                     }
@@ -323,9 +330,14 @@ impl App {
     }
 
     /// Handles inputs when a substate is focused
-    fn handle_substate(&mut self, key: KeyCode) {
-        let Some((ref mut editing @ false, ref mut substate)) = self.substate else {
-            return;
+    ///
+    /// # Return value
+    /// Whether the function eats the input or not
+    /// true -> don't continue processing
+    /// false -> continue processing
+    fn handle_substate(&mut self, key: KeyCode) -> bool {
+        let Some((ref mut editing @ true, ref mut substate)) = self.substate else {
+            return false;
         };
         match substate {
             Substate::Filter(ref mut search) => match key {
@@ -333,9 +345,11 @@ impl App {
                 KeyCode::Esc => {
                     self.substate = None;
                 }
+                KeyCode::Backspace => drop(search.pop()),
                 KeyCode::Char(c) => search.push(c),
                 _ => (),
             },
         }
+        true
     }
 }

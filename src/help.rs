@@ -29,7 +29,7 @@ impl Help {
             .into_iter()
             .map(|(a, b)| Item((a.into_boxed_str(), b.into_boxed_str())))
             .collect::<Vec<_>>();
-        ordered.sort_unstable_by(|a, b| a.0 .0.cmp(&b.0 .0));
+        ordered.sort_by_key(|x| x.score(""));
         Ok(Self(ordered))
     }
 }

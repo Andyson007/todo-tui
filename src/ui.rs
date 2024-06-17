@@ -15,7 +15,7 @@ use ratatui::{
 };
 
 use crate::{
-    app::{App, CurrentEdit, CurrentSelection, Popup},
+    app::{App, CurrentEdit, CurrentSelection, Popup, Substate},
     query,
 };
 
@@ -23,12 +23,27 @@ use crate::{
 /// It probably assumes a lot about the
 /// terminal being in raw mode etc.
 pub fn ui(frame: &mut Frame, app: &App) {
+    let substate = if let Some((_, ref x)) = app.substate {
+        Some(x)
+    } else {
+        None
+    };
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(1),
+            Constraint::Length(u16::from(substate.is_some())),
+        ])
+        .split(frame.size());
+    if let Some(substate) = substate {
+        substate.render(frame, chunks[1]);
+    }
     match &app.current_selection {
         a @ (CurrentSelection::Menu | CurrentSelection::Description) => {
             let chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(frame.size());
+                .split(chunks[0]);
 
             draw_selection(frame, chunks[0], app, a);
             draw_info(frame, chunks[1], app, a);
@@ -48,14 +63,26 @@ pub fn ui(frame: &mut Frame, app: &App) {
             Popup::Help(selected) => {
                 let area = centered_rect(60, 60, frame.size());
                 frame.render_widget(Clear, area);
+                let (substate_control, opts) = {
+                    if let Some((b, substate)) = &app.substate {
+                        (
+                            *b,
+                            match substate {
+                                Substate::Filter(x) => query(app.help.0.clone(), x),
+                            },
+                        )
+                    } else {
+                        (false, app.help.0.iter().cloned().enumerate().collect())
+                    }
+                };
+                let selected = if substate_control { 0 } else { *selected };
                 let chunks = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints(Constraint::from_percentages([30, 70]))
                     .split(area);
-                let mut state = ListState::with_selected(ListState::default(), Some(*selected));
-                let opts = query(app.help.0.clone(), "test");
-                let description = opts[*selected].clone();
-                let text = List::new(opts.into_iter().map(|x| x.1 .0 .0.to_string()))
+                let mut state = ListState::with_selected(ListState::default(), Some(selected));
+                let description = &opts[selected];
+                let text = List::new(opts.iter().map(|x| x.1 .0 .0.to_string()))
                     .block(Block::default().title("Help").borders(Borders::ALL))
                     .scroll_padding(3)
                     .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
@@ -72,7 +99,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
 fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelection) {
     let info = Paragraph::new(Text::raw(
         app.selected
-            .map_or_else(String::new, |x| app.options[x].1.to_string()),
+            .map_or_else(String::new, |x| app.options[x].1 .0.to_string()),
     ))
     .block(
         Block::bordered().style(if matches!(selection, CurrentSelection::Description) {
@@ -83,7 +110,8 @@ fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelec
     )
     .wrap(Wrap { trim: false })
     .scroll((
-        app.selected.map_or(0, |x| app.options[x].2.try_into().unwrap()),
+        app.selected
+            .map_or(0, |x| app.options[x].1 .1.try_into().unwrap()),
         0,
     ));
 
@@ -202,4 +230,16 @@ fn render_title_desc(title: &str, description: &str, editing: &CurrentEdit, fram
     .block(description_block)
     .wrap(Wrap { trim: false });
     frame.render_widget(description_text, chunks[1]);
+}
+
+impl Substate {
+    /// renders self into a widget
+    pub fn render(&self, frame: &mut Frame, chunk: Rect) {
+        match self {
+            Self::Filter(x) => frame.render_widget(
+                Text::raw(format!("/{x}")).style(Style::default().fg(Color::Blue)),
+                chunk,
+            ),
+        }
+    }
 }
