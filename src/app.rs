@@ -3,7 +3,7 @@
 
 use crossterm::event::KeyCode;
 
-use crate::help::Help;
+use crate::{help::Help, parse::todo::Items};
 
 /// The current screen that should be shown to
 /// behind all other popups
@@ -32,7 +32,7 @@ pub struct App {
     /// 1.0: Description
     /// 1.1: Scroll height of this description
     #[allow(clippy::type_complexity)]
-    pub options: Vec<(Box<str>, (Box<str>, usize))>,
+    pub options: Items,
     /// The current layout of the screen
     pub layout: ScreenLayout,
     /// The help menu stored
@@ -49,7 +49,7 @@ impl Default for App {
             current_selection: CurrentSelection::Menu,
             popup: None,
             selected: None,
-            options: Vec::new(),
+            options: Items::default(),
             title: String::new(),
             help: Help::parse("./help.json").unwrap(),
             substate: None,
@@ -60,16 +60,17 @@ impl Default for App {
 impl App {
     /// Changes what item is selected.
     pub fn change_menu_item(&mut self, dir: &Direction) {
-        let len = self.options.len();
+        let len = self.options.amount();
         if len == 0 {
             return;
         }
         match dir {
             Direction::Up => self.selected = self.selected.map_or(Some(0), |x| Some((x + 1) % len)),
             Direction::Down => {
-                self.selected = self
-                    .selected
-                    .map_or(Some(self.options.len() - 1), |x| Some((x + len - 1) % len));
+                self.selected = self.selected.map_or_else(
+                    || Some(self.options.amount() - 1),
+                    |x| Some((x + len - 1) % len),
+                );
             }
         }
     }
@@ -84,10 +85,10 @@ impl App {
             return;
         }
         let loc = self.selected.unwrap();
-        let option = self.options[loc].clone();
+        let option = &self.options[loc];
         self.popup = Some(Popup::Edit {
-            title: option.0.to_string(),
-            description: option.1 .0.to_string(),
+            title: option.title.to_string(),
+            description: option.description.to_string(),
             editing: CurrentEdit::Title,
             to_change: Some(loc),
         });
@@ -257,11 +258,11 @@ impl App {
                 PopupReturnAction::Exit => self.popup = None,
                 PopupReturnAction::Nothing => {}
                 PopupReturnAction::Edit(x, new_val) => {
-                    self.options[x] = new_val;
+                    self.options[x] = new_val.into();
                     self.popup = None;
                 }
                 PopupReturnAction::Add(new_val) => {
-                    self.options.push(new_val);
+                    self.options.add(new_val.into());
                     self.popup = None;
                 }
                 PopupReturnAction::EnterSubState(x) => self.substate = Some((true, x)),
@@ -293,7 +294,7 @@ impl App {
                     KeyCode::Char('d') if self.selected.is_some() => {
                         let selected = unsafe { self.selected.unwrap_unchecked() };
                         self.options.remove(selected);
-                        if selected == self.options.len() {
+                        if selected == self.options.amount() {
                             if self.options.is_empty() {
                                 self.selected = None;
                             } else {
@@ -313,13 +314,15 @@ impl App {
                         KeyCode::Char('q') => self.current_selection = CurrentSelection::Menu,
                         // Vim motions
                         KeyCode::Char('j') | KeyCode::Down => {
-                            if self.selected? != self.options.len() - 1 {
-                                self.options[self.selected?].1 .1 += 1;
+                            if self.selected? != self.options.amount() - 1 {
+                                self.options[self.selected?].description_scroll += 1;
                             }
                         }
                         KeyCode::Char('k') | KeyCode::Up => {
-                            self.options[self.selected?].1 .1 =
-                                self.options[self.selected?].1 .1.saturating_sub(1);
+                            self.options[self.selected?].description_scroll = self.options
+                                [self.selected?]
+                                .description_scroll
+                                .saturating_sub(1);
                         }
                         _ => (),
                     }

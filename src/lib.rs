@@ -14,6 +14,7 @@ pub mod app_builder;
 pub mod errors;
 pub mod help;
 pub mod ui;
+pub mod parse;
 
 /// Returns an ordered list how alike it is to
 /// the search query
@@ -38,6 +39,8 @@ pub trait Score {
     fn score(&self, query: &str) -> Option<i64>;
 }
 
+// FIXME: This is horrible code for judging the score of a given word
+// compared to its query
 impl Score for String {
     fn score(&self, query: &str) -> Option<i64> {
         if self.contains(query) {
