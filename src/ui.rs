@@ -23,10 +23,10 @@ use crate::{
 /// It probably assumes a lot about the
 /// terminal being in raw mode etc.
 pub fn ui(frame: &mut Frame, app: &App) {
-    let substate = if let Some((_, ref x)) = app.substate {
-        Some(x)
+    let (in_state, substate) = if let Some((in_state, ref x)) = app.substate {
+        (in_state, Some(x))
     } else {
-        None
+        (false, None)
     };
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -36,7 +36,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
         ])
         .split(frame.size());
     if let Some(substate) = substate {
-        substate.render(frame, chunks[1]);
+        substate.render(in_state, frame, chunks[1]);
     }
     match &app.current_selection {
         a @ (CurrentSelection::Menu | CurrentSelection::Description) => {
@@ -148,6 +148,7 @@ fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App, selection: &Current
     frame.render_stateful_widget(list, chunks[1], &mut state);
 }
 
+/// This code is absolutely stolen from the ratatui json example
 /// Draws a centered rectangle
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     // Cut the given rectangle into three vertical pieces
@@ -233,11 +234,24 @@ fn render_title_desc(title: &str, description: &str, editing: &CurrentEdit, fram
 }
 
 impl Substate {
+    #![allow(clippy::doc_markdown)]
     /// renders self into a widget
-    pub fn render(&self, frame: &mut Frame, chunk: Rect) {
+    ///
+    /// # Parameters
+    /// in_state are we currently in the substate?
+    /// frame: The global frame to draw on
+    /// chunk: The Rectangle which we are allowed to modify
+    pub fn render(&self, in_state: bool, frame: &mut Frame, chunk: Rect) {
         match self {
             Self::Filter(x) => frame.render_widget(
-                Text::raw(format!("/{x}")).style(Style::default().fg(Color::Blue)),
+                Text::raw({
+                    let mut ret = format!("/{x}");
+                    if in_state {
+                        ret.push('█');
+                    }
+                    ret
+                })
+                .style(Style::default().fg(Color::Blue)),
                 chunk,
             ),
         }
