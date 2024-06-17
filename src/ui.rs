@@ -81,14 +81,17 @@ pub fn ui(frame: &mut Frame, app: &App) {
                     .constraints(Constraint::from_percentages([30, 70]))
                     .split(area);
                 let mut state = ListState::with_selected(ListState::default(), Some(selected));
-                let description = &opts[selected];
+                let description = &opts.get(selected);
                 let text = List::new(opts.iter().map(|x| x.1 .0 .0.to_string()))
                     .block(Block::default().title("Help").borders(Borders::ALL))
                     .scroll_padding(3)
                     .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
                 frame.render_stateful_widget(text, chunks[0], &mut state);
-                let description = Paragraph::new(Text::raw(description.1 .0 .1.to_string()))
-                    .block(Block::default().title("Desc").borders(Borders::ALL));
+                let description = Paragraph::new(Text::raw(
+                    description
+                        .map_or(String::new(), |description| description.1 .0 .1.to_string()),
+                ))
+                .block(Block::default().title("Desc").borders(Borders::ALL));
                 frame.render_widget(description, chunks[1]);
             }
         }
