@@ -31,8 +31,8 @@ impl<T> OrderedList<T> {
     /// # use todo::ordered_list::OrderedList;
     /// let _ = OrderedList::from([0, 1, 2, 3]);
     /// ```
-    pub fn from(iter: impl IntoIterator<Item = T>) -> Self {
-        let mut iter = iter.into_iter();
+    pub fn from(data: impl IntoIterator<Item = T>) -> Self {
+        let mut iter = data.into_iter();
         let Some(first) = iter.next() else {
             return Self { data: None };
         };
@@ -53,6 +53,30 @@ impl<T> OrderedList<T> {
         Self {
             data: Some(Box::new(first_node)),
         }
+    }
+
+    /// Retruns an iterator
+    #[must_use]
+    pub const fn iter(&self) -> NodeIterator<T>
+    where
+        T: Clone,
+    {
+        NodeIterator {
+            next: self.data.as_ref(),
+        }
+    }
+}
+
+impl<'a, T> IntoIterator for &'a OrderedList<T>
+where
+    T: Clone,
+{
+    type Item = T;
+
+    type IntoIter = NodeIterator<'a, T> where T: Clone;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
@@ -75,6 +99,30 @@ impl<T> IndexMut<usize> for OrderedList<T> {
             curr = &mut *curr.next.as_mut().expect("Out of bounds access");
         }
         &mut curr.data
+    }
+}
+
+/// An iterator that can iterate over nodes
+#[derive(Debug)]
+pub struct NodeIterator<'a, T>
+where
+    T: Clone,
+{
+    #[allow(clippy::borrowed_box)]
+    next: Option<&'a Box<Node<T>>>,
+}
+
+impl<'a, T> Iterator for NodeIterator<'a, T>
+where
+    T: Clone,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = &(self.next?);
+        let ret = &next.data;
+        self.next = next.next.as_ref();
+        Some(ret.clone())
     }
 }
 
