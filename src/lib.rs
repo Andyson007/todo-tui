@@ -15,10 +15,11 @@ pub mod errors;
 pub mod help;
 pub mod ui;
 pub mod parse;
+pub mod popup;
 
+#[must_use]
 /// Returns an ordered list how alike it is to
 /// the search query
-#[must_use]
 pub fn query<T>(iter: Vec<T>, query: &str) -> Vec<(usize, T)>
 where
     T: Score + Clone + Debug,

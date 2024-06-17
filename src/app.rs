@@ -3,7 +3,11 @@
 
 use crossterm::event::KeyCode;
 
-use crate::{help::Help, parse::todo::Items};
+use crate::{
+    help::Help,
+    parse::todo::Items,
+    popup::{self, Popup},
+};
 
 /// The current screen that should be shown to
 /// behind all other popups
@@ -124,113 +128,6 @@ pub enum ScreenLayout {
     Small,
 }
 
-/// State data for a popup
-#[derive(Debug)]
-pub enum Popup {
-    /// You are editing an item
-    Edit {
-        /// The title of the item
-        title: String,
-        /// The description of the item
-        description: String,
-        /// The currently highlighted/edited part of the popup
-        editing: CurrentEdit,
-        /// The index of the currently edited item if its empty then a new item is being added
-        to_change: Option<usize>,
-    },
-
-    /// Show help menu
-    Help(
-        /// the index of the currently selected item
-        usize,
-    ),
-}
-
-enum PopupReturnAction {
-    /// Exit the Popup
-    Exit,
-    /// Do nothing
-    Nothing,
-    /// Edit the item
-    /// 0: the item to be edited
-    /// 1: its new value
-    Edit(usize, (Box<str>, (Box<str>, usize))),
-    /// Add an item
-    /// The value to push
-    Add((Box<str>, (Box<str>, usize))),
-    /// Enter a substate
-    // TODO: Make it not override that substate
-    EnterSubState(Substate),
-}
-
-impl Popup {
-    // HACK: This should not have to take help as an input
-    fn handle_input(&mut self, key: KeyCode, help: &Help) -> PopupReturnAction {
-        match self {
-            Self::Edit {
-                ref mut title,
-                ref mut description,
-                ref mut editing,
-                to_change,
-            } => match key {
-                KeyCode::Backspace => drop(
-                    match editing {
-                        CurrentEdit::Title => title,
-                        CurrentEdit::Body => description,
-                    }
-                    .pop(),
-                ),
-                KeyCode::Esc => return PopupReturnAction::Exit,
-                KeyCode::Enter => {
-                    return to_change.as_mut().map_or_else(
-                        || {
-                            PopupReturnAction::Add((
-                                title.to_owned().into_boxed_str(),
-                                (description.to_owned().into_boxed_str(), 0),
-                            ))
-                        },
-                        |x| {
-                            PopupReturnAction::Edit(
-                                *x,
-                                (
-                                    title.to_owned().into_boxed_str(),
-                                    (description.to_owned().into_boxed_str(), 0),
-                                ),
-                            )
-                        },
-                    )
-                }
-                KeyCode::Tab => {
-                    *editing = match editing {
-                        CurrentEdit::Title => CurrentEdit::Body,
-                        CurrentEdit::Body => CurrentEdit::Title,
-                    }
-                }
-                KeyCode::Char(x) => match editing {
-                    CurrentEdit::Title => title,
-                    CurrentEdit::Body => description,
-                }
-                .push(x),
-                _ => (),
-            },
-            Self::Help(ref mut x) => match key {
-                KeyCode::Char('q') => return PopupReturnAction::Exit,
-                KeyCode::Char('j') => {
-                    if *x != help.0.len() - 1 {
-                        *x += 1;
-                    }
-                }
-                KeyCode::Char('k') => *x = x.saturating_sub(1),
-                KeyCode::Char('/') => {
-                    return PopupReturnAction::EnterSubState(Substate::Filter(String::new()))
-                }
-                _ => (),
-            },
-        }
-        PopupReturnAction::Nothing
-    }
-}
-
 /// What part of a todo-item are you editing?
 #[derive(Debug)]
 #[allow(missing_docs)]
@@ -255,17 +152,17 @@ impl App {
         }
         if let Some(ref mut popup) = self.popup {
             match popup.handle_input(key, &self.help) {
-                PopupReturnAction::Exit => self.popup = None,
-                PopupReturnAction::Nothing => {}
-                PopupReturnAction::Edit(x, new_val) => {
+                popup::ReturnAction::Exit => self.popup = None,
+                popup::ReturnAction::Nothing => {}
+                popup::ReturnAction::Edit(x, new_val) => {
                     self.options[x] = new_val.into();
                     self.popup = None;
                 }
-                PopupReturnAction::Add(new_val) => {
+                popup::ReturnAction::Add(new_val) => {
                     self.options.add(new_val.into());
                     self.popup = None;
                 }
-                PopupReturnAction::EnterSubState(x) => self.substate = Some((true, x)),
+                popup::ReturnAction::EnterSubState(x) => self.substate = Some((true, x)),
             };
         } else {
             match self.current_selection {

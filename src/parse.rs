@@ -45,8 +45,6 @@ pub mod todo {
             self.items.is_empty()
         }
 
-        // FIXME: This actually forces the internal representation to use RefCell
-
         /// Returns a list of each title
         #[must_use]
         pub fn titles(&self) -> Vec<String> {

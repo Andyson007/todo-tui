@@ -15,8 +15,9 @@ use ratatui::{
 };
 
 use crate::{
-    app::{App, CurrentEdit, CurrentSelection, Popup, Substate},
+    app::{App, CurrentEdit, CurrentSelection, Substate},
     query,
+    popup::Popup,
 };
 
 /// Draws the ui.
