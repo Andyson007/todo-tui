@@ -16,6 +16,7 @@ pub mod help;
 pub mod ui;
 pub mod parse;
 pub mod popup;
+pub mod ordered_list;
 
 #[must_use]
 /// Returns an ordered list how alike it is to
