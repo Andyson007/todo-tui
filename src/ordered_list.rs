@@ -126,6 +126,33 @@ where
     }
 }
 
+impl<T> Clone for OrderedList<T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        let mut iter = self.iter();
+        let Some(first) = iter.next() else {
+            return Self { data: None };
+        };
+        let mut first = Node {
+            data: first,
+            next: None,
+        };
+        let mut curr = &mut first;
+        for item in iter {
+            curr.next = Some(Box::new(Node {
+                data: item,
+                next: None,
+            }));
+            curr = unsafe { curr.next.as_mut().unwrap_unchecked() };
+        }
+        Self {
+            data: Some(Box::new(first)),
+        }
+    }
+}
+
 impl<T> PartialEq for OrderedList<T>
 where
     T: Eq,
@@ -186,5 +213,12 @@ mod test {
         assert_eq!(a, b);
         a[3] = 4;
         assert_ne!(a, b);
+    }
+    #[test]
+    fn clone() {
+        let a = OrderedList::from([0, 1, 2, 3, 4, 5]);
+        let mut b = a.clone();
+        b[5] = 15;
+        drop(a);
     }
 }
