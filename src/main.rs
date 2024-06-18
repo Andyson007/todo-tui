@@ -26,14 +26,14 @@ fn main() -> color_eyre::Result<()> {
     // create app and run it
     let mut app = AppBuilder::default()
         .with_title("AndyCo")
-        .with_options([
-            ("desc", "cool2"),
-            (
-                "<C-w> support",
-                "This todo-app doesn't delete full words when pressing <C-w>",
-            ),
-            ("desc", "cool2"),
-        ])
+        // .with_options([
+        //     ("desc", "cool2"),
+        //     (
+        //         "<C-w> support",
+        //         "This todo-app doesn't delete full words when pressing <C-w>",
+        //     ),
+        //     ("desc", "cool2"),
+        // ])
         .into();
     let res = run_app(&mut terminal, &mut app);
 

@@ -6,7 +6,7 @@ use crossterm::event::KeyCode;
 use crate::{
     help,
     parse::todo::{Item, Items},
-    popup::{self, Popup},
+    popup::{self, Popup}, static_info::StaticInfo,
 };
 
 /// The current screen that should be shown to
@@ -30,17 +30,10 @@ pub struct App {
     pub title: String,
     /// The currently selected item (An index)
     pub selected: Option<usize>,
-    /// All selectable options
-    ///
-    /// 0: Title,
-    /// 1.0: Description
-    /// 1.1: Scroll height of this description
-    #[allow(clippy::type_complexity)]
-    pub options: Items<Item>,
     /// The current layout of the screen
     pub layout: ScreenLayout,
     /// The help menu stored
-    pub help: Items<help::Item>,
+    pub static_information: StaticInfo,
     /// a bool determining whether we are in the substate and
     /// the information associated with it
     pub substate: Option<(bool, Substate)>,
@@ -53,9 +46,8 @@ impl Default for App {
             current_selection: CurrentSelection::Menu,
             popup: None,
             selected: None,
-            options: Items::default(),
             title: String::new(),
-            help: help::parse("./help.json").unwrap(),
+            static_information: StaticInfo::default(),
             substate: None,
         }
     }
@@ -64,7 +56,7 @@ impl Default for App {
 impl App {
     /// Changes what item is selected.
     pub fn change_menu_item(&mut self, dir: &Direction) {
-        let len = self.options.amount();
+        let len = self.static_information.options.amount();
         if len == 0 {
             return;
         }
@@ -72,7 +64,7 @@ impl App {
             Direction::Up => self.selected = self.selected.map_or(Some(0), |x| Some((x + 1) % len)),
             Direction::Down => {
                 self.selected = self.selected.map_or_else(
-                    || Some(self.options.amount() - 1),
+                    || Some(self.static_information.options.amount() - 1),
                     |x| Some((x + len - 1) % len),
                 );
             }
@@ -89,7 +81,7 @@ impl App {
             return;
         }
         let loc = self.selected.unwrap();
-        let option = &self.options[loc];
+        let option = &self.static_information.options[loc];
         self.popup = Some(Popup::Edit {
             title: option.title.to_string(),
             description: option.description.to_string(),
@@ -138,6 +130,7 @@ pub enum CurrentEdit {
 
 /// Contains substates that should be accessible on every screen
 #[derive(Debug)]
+// TODO:  make
 pub enum Substate {
     /// Filter for a result
     /// 0: a string representing the current search query
@@ -147,19 +140,26 @@ pub enum Substate {
 impl App {
     /// Handles an input
     pub fn handle_input(&mut self, key: KeyCode) -> Option<bool> {
-        if self.handle_substate(key) {
-            return None;
+        match self.handle_substate(key) {
+            SubstateReturn::Continue => (),
+            SubstateReturn::Exit => return None,
+            SubstateReturn::Select => {
+                if let Some(Popup::Help(ref mut x)) = self.popup {
+                    *x = 0;
+                }
+                return None;
+            }
         }
         if let Some(ref mut popup) = self.popup {
-            match popup.handle_input(key, &self.help) {
+            match popup.handle_input(key, &self.static_information.help) {
                 popup::ReturnAction::Exit => self.popup = None,
                 popup::ReturnAction::Nothing => {}
                 popup::ReturnAction::Edit(x, new_val) => {
-                    self.options[x] = new_val.into();
+                    self.static_information.options[x] = new_val.into();
                     self.popup = None;
                 }
                 popup::ReturnAction::Add(new_val) => {
-                    self.options.add(new_val.into());
+                    self.static_information.options.add(new_val.into());
                     self.popup = None;
                 }
                 popup::ReturnAction::EnterSubState(x) => self.substate = Some((true, x)),
@@ -169,9 +169,8 @@ impl App {
                 CurrentSelection::Menu => match key {
                     // quit
                     KeyCode::Char('q') => return Some(true),
-                    //
+                    // Help
                     KeyCode::Char('?') => self.popup = Some(Popup::Help(0)),
-
                     // Vim motion + Down key
                     KeyCode::Char('j') | KeyCode::Down => self.change_menu_item(&Direction::Up),
                     // Vim motion + Down key
@@ -190,9 +189,9 @@ impl App {
                     // Delete entry
                     KeyCode::Char('d') if self.selected.is_some() => {
                         let selected = unsafe { self.selected.unwrap_unchecked() };
-                        self.options.remove(selected);
-                        if selected == self.options.amount() {
-                            if self.options.is_empty() {
+                        self.static_information.options.remove(selected);
+                        if selected == self.static_information.options.amount() {
+                            if self.static_information.options.is_empty() {
                                 self.selected = None;
                             } else {
                                 self.selected = Some(selected - 1);
@@ -211,12 +210,12 @@ impl App {
                         KeyCode::Char('q') => self.current_selection = CurrentSelection::Menu,
                         // Vim motions
                         KeyCode::Char('j') | KeyCode::Down => {
-                            if self.selected? != self.options.amount() - 1 {
-                                self.options[self.selected?].description_scroll += 1;
+                            if self.selected? != self.static_information.options.amount() - 1 {
+                                self.static_information.options[self.selected?].description_scroll += 1;
                             }
                         }
                         KeyCode::Char('k') | KeyCode::Up => {
-                            self.options[self.selected?].description_scroll = self.options
+                            self.static_information.options[self.selected?].description_scroll = self.static_information.options
                                 [self.selected?]
                                 .description_scroll
                                 .saturating_sub(1);
@@ -230,18 +229,16 @@ impl App {
     }
 
     /// Handles inputs when a substate is focused
-    ///
-    /// # Return value
-    /// Whether the function eats the input or not
-    /// true -> don't continue processing
-    /// false -> continue processing
-    fn handle_substate(&mut self, key: KeyCode) -> bool {
+    fn handle_substate(&mut self, key: KeyCode) -> SubstateReturn {
         let Some((ref mut editing @ true, ref mut substate)) = self.substate else {
-            return false;
+            return SubstateReturn::Continue;
         };
         match substate {
             Substate::Filter(ref mut search) => match key {
-                KeyCode::Enter => *editing = false,
+                KeyCode::Enter => {
+                    *editing = false;
+                    return SubstateReturn::Select;
+                }
                 KeyCode::Esc => {
                     self.substate = None;
                 }
@@ -250,6 +247,16 @@ impl App {
                 _ => (),
             },
         }
-        true
+        SubstateReturn::Exit
     }
+}
+
+/// HACK: This is a really temporary solution
+enum SubstateReturn {
+    /// Continue processing key events
+    Continue,
+    /// Stop processing key events
+    Exit,
+    /// Stop processing key events, but also select the default selection
+    Select,
 }

@@ -69,13 +69,15 @@ pub fn ui(frame: &mut Frame, app: &App) {
                         (
                             *b,
                             match substate {
-                                Substate::Filter(x) => query(app.help.items.to_vec(), x),
+                                Substate::Filter(x) => query(app.static_information.help.items.to_vec(), x),
                             },
                         )
                     } else {
-                        (false, app.help.items.iter().cloned().enumerate().collect())
+                        (false, app.static_information.help.items.iter().cloned().enumerate().collect())
                     }
                 };
+                // HACK: This only renders the cursor at the top while searching The cursor
+                // automatically jumps back to its previous position afterward
                 let selected = if substate_control { 0 } else { *selected };
                 let chunks = Layout::default()
                     .direction(Direction::Horizontal)
@@ -103,7 +105,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
 fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelection) {
     let info = Paragraph::new(Text::raw(
         app.selected
-            .map_or_else(String::new, |x| app.options[x].description.to_string()),
+            .map_or_else(String::new, |x| app.static_information.options[x].description.to_string()),
     ))
     .block(
         Block::bordered().style(if matches!(selection, CurrentSelection::Description) {
@@ -115,7 +117,7 @@ fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelec
     .wrap(Wrap { trim: false })
     .scroll((
         app.selected.map_or(0, |x| {
-            app.options[x]
+            app.static_information.options[x]
                 .description_scroll
                 .try_into()
                 .expect("Corgats! You wasted time")
@@ -142,7 +144,7 @@ fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App, selection: &Current
     frame.render_widget(title, chunks[0]);
 
     let mut state = ListState::with_selected(ListState::default(), app.selected);
-    let list = List::new(app.options.titles())
+    let list = List::new(app.static_information.options.titles())
         .block(Block::bordered().title("List").style(
             if matches!(selection, CurrentSelection::Menu) {
                 Color::Green

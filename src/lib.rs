@@ -15,9 +15,10 @@ pub mod app_builder;
 pub mod errors;
 pub mod help;
 pub mod parse;
-mod ordered_list;
 pub mod popup;
 pub mod ui;
+mod ordered_list;
+mod static_info;
 
 #[must_use]
 /// Returns an ordered list how alike it is to
