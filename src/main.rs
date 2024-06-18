@@ -1,7 +1,7 @@
 //! Crate to manage something. Haven't decided yet
 
 use std::io;
-use todo::{app::App, app_builder::AppBuilder, errors, ui::ui};
+use todo::{app::App, errors, ui::ui};
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event},
@@ -24,17 +24,7 @@ fn main() -> color_eyre::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let mut app = AppBuilder::default()
-        .with_title("AndyCo")
-        // .with_options([
-        //     ("desc", "cool2"),
-        //     (
-        //         "<C-w> support",
-        //         "This todo-app doesn't delete full words when pressing <C-w>",
-        //     ),
-        //     ("desc", "cool2"),
-        // ])
-        .into();
+    let mut app = App::from_files("./lists.json", "./help.json").unwrap();
     let res = run_app(&mut terminal, &mut app);
 
     // restore terminal

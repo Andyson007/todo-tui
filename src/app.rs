@@ -1,12 +1,13 @@
 //! The main module.
 //! implements App and all of its features
 
+use std::{error::Error, path::Path};
+
 use crossterm::event::KeyCode;
 
 use crate::{
-    help,
-    parse::todo::{Item, Items},
-    popup::{self, Popup}, static_info::StaticInfo,
+    popup::{self, Popup},
+    static_info::StaticInfo,
 };
 
 /// The current screen that should be shown to
@@ -39,24 +40,33 @@ pub struct App {
     pub substate: Option<(bool, Substate)>,
 }
 
-impl Default for App {
-    fn default() -> Self {
-        Self {
+impl App {
+    /// Takes files and makes an app from them
+    pub fn from_files<P>(lists: P, help: P) -> Result<Self, Box<dyn Error>>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(Self {
             layout: ScreenLayout::Small,
             current_selection: CurrentSelection::Menu,
             popup: None,
             selected: None,
             title: String::new(),
-            static_information: StaticInfo::default(),
+            static_information: StaticInfo::from(lists, help)?,
             substate: None,
-        }
+        })
     }
 }
 
 impl App {
     /// Changes what item is selected.
     pub fn change_menu_item(&mut self, dir: &Direction) {
-        let len = self.static_information.options.amount();
+        let len = self
+            .static_information
+            .lists
+            .get_mut("AndyCo")
+            .unwrap()
+            .amount();
         if len == 0 {
             return;
         }
@@ -64,7 +74,16 @@ impl App {
             Direction::Up => self.selected = self.selected.map_or(Some(0), |x| Some((x + 1) % len)),
             Direction::Down => {
                 self.selected = self.selected.map_or_else(
-                    || Some(self.static_information.options.amount() - 1),
+                    || {
+                        Some(
+                            self.static_information
+                                .lists
+                                .get_mut("AndyCo")
+                                .unwrap()
+                                .amount()
+                                - 1,
+                        )
+                    },
                     |x| Some((x + len - 1) % len),
                 );
             }
@@ -81,7 +100,7 @@ impl App {
             return;
         }
         let loc = self.selected.unwrap();
-        let option = &self.static_information.options[loc];
+        let option = &self.static_information.lists.get_mut("AndyCo").unwrap()[loc];
         self.popup = Some(Popup::Edit {
             title: option.title.to_string(),
             description: option.description.to_string(),
@@ -155,11 +174,15 @@ impl App {
                 popup::ReturnAction::Exit => self.popup = None,
                 popup::ReturnAction::Nothing => {}
                 popup::ReturnAction::Edit(x, new_val) => {
-                    self.static_information.options[x] = new_val.into();
+                    self.static_information.lists.get_mut("AndyCo").unwrap()[x] = new_val.into();
                     self.popup = None;
                 }
                 popup::ReturnAction::Add(new_val) => {
-                    self.static_information.options.add(new_val.into());
+                    self.static_information
+                        .lists
+                        .get_mut("AndyCo")
+                        .unwrap()
+                        .add(new_val.into());
                     self.popup = None;
                 }
                 popup::ReturnAction::EnterSubState(x) => self.substate = Some((true, x)),
@@ -189,9 +212,26 @@ impl App {
                     // Delete entry
                     KeyCode::Char('d') if self.selected.is_some() => {
                         let selected = unsafe { self.selected.unwrap_unchecked() };
-                        self.static_information.options.remove(selected);
-                        if selected == self.static_information.options.amount() {
-                            if self.static_information.options.is_empty() {
+                        self.static_information
+                            .lists
+                            .get_mut("AndyCo")
+                            .unwrap()
+                            .remove(selected);
+                        if selected
+                            == self
+                                .static_information
+                                .lists
+                                .get_mut("AndyCo")
+                                .unwrap()
+                                .amount()
+                        {
+                            if self
+                                .static_information
+                                .lists
+                                .get_mut("AndyCo")
+                                .unwrap()
+                                .is_empty()
+                            {
                                 self.selected = None;
                             } else {
                                 self.selected = Some(selected - 1);
@@ -210,15 +250,28 @@ impl App {
                         KeyCode::Char('q') => self.current_selection = CurrentSelection::Menu,
                         // Vim motions
                         KeyCode::Char('j') | KeyCode::Down => {
-                            if self.selected? != self.static_information.options.amount() - 1 {
-                                self.static_information.options[self.selected?].description_scroll += 1;
+                            if self.selected?
+                                != self
+                                    .static_information
+                                    .lists
+                                    .get_mut("AndyCo")
+                                    .unwrap()
+                                    .amount()
+                                    - 1
+                            {
+                                self.static_information.lists.get_mut("AndyCo").unwrap()
+                                    [self.selected?]
+                                    .description_scroll += 1;
                             }
                         }
                         KeyCode::Char('k') | KeyCode::Up => {
-                            self.static_information.options[self.selected?].description_scroll = self.static_information.options
+                            self.static_information.lists.get_mut("AndyCo").unwrap()
                                 [self.selected?]
-                                .description_scroll
-                                .saturating_sub(1);
+                                .description_scroll =
+                                self.static_information.lists.get_mut("AndyCo").unwrap()
+                                    [self.selected?]
+                                    .description_scroll
+                                    .saturating_sub(1);
                         }
                         _ => (),
                     }

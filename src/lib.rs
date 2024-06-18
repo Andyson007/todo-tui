@@ -11,7 +11,6 @@
 use core::fmt::Debug;
 
 pub mod app;
-pub mod app_builder;
 pub mod errors;
 pub mod help;
 pub mod parse;

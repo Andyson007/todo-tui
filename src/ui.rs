@@ -105,7 +105,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
 fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelection) {
     let info = Paragraph::new(Text::raw(
         app.selected
-            .map_or_else(String::new, |x| app.static_information.options[x].description.to_string()),
+            .map_or_else(String::new, |x| app.static_information.lists.get("AndyCo").unwrap()[x].description.to_string()),
     ))
     .block(
         Block::bordered().style(if matches!(selection, CurrentSelection::Description) {
@@ -117,7 +117,7 @@ fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelec
     .wrap(Wrap { trim: false })
     .scroll((
         app.selected.map_or(0, |x| {
-            app.static_information.options[x]
+            app.static_information.lists.get("AndyCo").unwrap()[x]
                 .description_scroll
                 .try_into()
                 .expect("Corgats! You wasted time")
@@ -144,7 +144,7 @@ fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App, selection: &Current
     frame.render_widget(title, chunks[0]);
 
     let mut state = ListState::with_selected(ListState::default(), app.selected);
-    let list = List::new(app.static_information.options.titles())
+    let list = List::new(app.static_information.lists.get("AndyCo").unwrap().titles())
         .block(Block::bordered().title("List").style(
             if matches!(selection, CurrentSelection::Menu) {
                 Color::Green
