@@ -4,6 +4,8 @@
 pub mod todo {
     use std::ops::{Index, IndexMut};
 
+    use crate::{ordered_list::OrderedList, Score};
+
     /// A single Todo-item
     #[derive(Debug)]
     pub struct Item {
@@ -19,36 +21,38 @@ pub mod todo {
     /// A list of items
     #[derive(Debug, Default)]
     pub struct Items {
-        items: Vec<Item>,
+        items: OrderedList<Item>,
     }
 
     impl Items {
         /// Returns the amount of items left
         #[must_use]
         pub fn amount(&self) -> usize {
-            self.items.len()
+            self.items.data.len()
         }
 
         /// Adds an item
         pub fn add(&mut self, item: Item) {
-            // FIXME: This doesn't maintain a sorted order resulting in distorientation when
-            // filtering
-            self.items.push(item);
+            self.items.insert(item);
         }
         /// Removes an item
         pub fn remove(&mut self, index: usize) -> Item {
-            self.items.remove(index)
+            self.items.data.remove(index)
         }
         /// Check if there are any items left
         #[must_use]
         pub fn is_empty(&self) -> bool {
-            self.items.is_empty()
+            self.items.data.is_empty()
         }
 
         /// Returns a list of each title
         #[must_use]
         pub fn titles(&self) -> Vec<String> {
-            self.items.iter().map(|x| x.title.to_string()).collect()
+            self.items
+                .data
+                .iter()
+                .map(|x| x.title.to_string())
+                .collect()
         }
     }
 
@@ -56,13 +60,13 @@ pub mod todo {
         type Output = Item;
 
         fn index(&self, index: usize) -> &Self::Output {
-            &self.items[index]
+            &self.items.data[index]
         }
     }
 
     impl IndexMut<usize> for Items {
         fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-            &mut self.items[index]
+            &mut self.items.data[index]
         }
     }
 
@@ -80,6 +84,20 @@ pub mod todo {
                 title,
                 description,
                 description_scroll,
+            }
+        }
+    }
+
+    impl Score for Item {
+        fn score(&self, query: &str) -> Option<i64> {
+            if (self.title.to_string() + &self.description_scroll.to_string()).contains(query) {
+                Some(
+                    (self.title.len() + self.description.len())
+                        .try_into()
+                        .unwrap(),
+                )
+            } else {
+                None
             }
         }
     }

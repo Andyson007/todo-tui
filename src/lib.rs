@@ -6,6 +6,7 @@
     missing_debug_implementations
 )]
 #![warn(clippy::pedantic, clippy::nursery)]
+#![feature(box_into_inner)]
 
 use core::fmt::Debug;
 
@@ -13,10 +14,10 @@ pub mod app;
 pub mod app_builder;
 pub mod errors;
 pub mod help;
-pub mod ui;
 pub mod parse;
+mod ordered_list;
 pub mod popup;
-pub mod ordered_list;
+pub mod ui;
 
 #[must_use]
 /// Returns an ordered list how alike it is to
