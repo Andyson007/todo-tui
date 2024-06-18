@@ -23,11 +23,11 @@ pub mod todo {
 
     impl ListItem for Item {
         fn title(&self) -> String {
-            todo!()
+            self.title.to_string()
         }
 
         fn description(&self) -> String {
-            todo!()
+            self.description.to_string()
         }
     }
 
@@ -37,7 +37,9 @@ pub mod todo {
     where
         T: Debug + Score + ListItem,
     {
-        items: OrderedList<T>,
+        /// TODO: This shouln't be public
+        /// look at how Box does its thing
+        pub items: OrderedList<T>,
     }
 
     impl<T> Items<T>
@@ -47,7 +49,7 @@ pub mod todo {
         /// Returns the amount of items left
         #[must_use]
         pub fn amount(&self) -> usize {
-            self.items.data.len()
+            self.items.len()
         }
 
         /// Adds an item
@@ -56,18 +58,18 @@ pub mod todo {
         }
         /// Removes an item
         pub fn remove(&mut self, index: usize) -> T {
-            self.items.data.remove(index)
+            self.items.remove(index)
         }
         /// Check if there are any items left
         #[must_use]
         pub fn is_empty(&self) -> bool {
-            self.items.data.is_empty()
+            self.items.is_empty()
         }
 
         /// Returns a list of each title
         #[must_use]
         pub fn titles(&self) -> Vec<String> {
-            self.items.data.iter().map(super::ListItem::title).collect()
+            self.items.iter().map(super::ListItem::title).collect()
         }
     }
 
@@ -78,7 +80,7 @@ pub mod todo {
         type Output = T;
 
         fn index(&self, index: usize) -> &Self::Output {
-            &self.items.data[index]
+            &self.items[index]
         }
     }
 
@@ -87,7 +89,7 @@ pub mod todo {
         T: Debug + Score + ListItem,
     {
         fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-            &mut self.items.data[index]
+            &mut self.items[index]
         }
     }
 

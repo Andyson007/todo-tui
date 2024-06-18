@@ -16,8 +16,8 @@ use ratatui::{
 
 use crate::{
     app::{App, CurrentEdit, CurrentSelection, Substate},
-    query,
     popup::Popup,
+    query,
 };
 
 /// Draws the ui.
@@ -69,11 +69,11 @@ pub fn ui(frame: &mut Frame, app: &App) {
                         (
                             *b,
                             match substate {
-                                Substate::Filter(x) => query(app.help.0.data.clone(), x),
+                                Substate::Filter(x) => query(app.help.items.to_vec(), x),
                             },
                         )
                     } else {
-                        (false, app.help.0.data.iter().cloned().enumerate().collect())
+                        (false, app.help.items.iter().cloned().enumerate().collect())
                     }
                 };
                 let selected = if substate_control { 0 } else { *selected };

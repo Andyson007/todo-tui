@@ -1,4 +1,7 @@
-use std::fmt::Debug;
+use std::{
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+};
 
 use crate::Score;
 
@@ -6,7 +9,7 @@ pub struct OrderedList<T>
 where
     T: Debug + Score,
 {
-    pub data: Vec<T>,
+    data: Vec<T>,
 }
 
 impl<T> Clone for OrderedList<T>
@@ -68,5 +71,25 @@ where
             .unwrap_or(self.data.len());
         self.data.insert(pos, data);
         pos
+    }
+}
+
+impl<T> Deref for OrderedList<T>
+where
+    T: Debug + Score,
+{
+    type Target = Vec<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
+
+impl<T> DerefMut for OrderedList<T>
+where
+    T: Debug + Score,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
     }
 }

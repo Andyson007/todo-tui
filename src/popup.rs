@@ -1,9 +1,7 @@
 //! Handles information about popups
 use crossterm::event::KeyCode;
 
-use crate::{app::{CurrentEdit, Substate}, help::Help};
-
-
+use crate::{app::{CurrentEdit, Substate}, help, parse::todo::Items};
 
 /// State data for a popup
 #[derive(Debug)]
@@ -50,7 +48,7 @@ impl Popup {
     // HACK: This should not have to take help as an input
 
     /// Handles input
-    pub fn handle_input(&mut self, key: KeyCode, help: &Help) -> ReturnAction {
+    pub fn handle_input(&mut self, key: KeyCode, help: &Items<help::Item>) -> ReturnAction {
         match self {
             Self::Edit {
                 ref mut title,
@@ -101,7 +99,7 @@ impl Popup {
             Self::Help(ref mut x) => match key {
                 KeyCode::Char('q') => return ReturnAction::Exit,
                 KeyCode::Char('j') => {
-                    if *x != help.0.data.len() - 1 {
+                    if *x != help.items.len() - 1 {
                         *x += 1;
                     }
                 }

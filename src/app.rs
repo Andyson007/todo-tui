@@ -4,7 +4,7 @@
 use crossterm::event::KeyCode;
 
 use crate::{
-    help::Help,
+    help,
     parse::todo::{Item, Items},
     popup::{self, Popup},
 };
@@ -40,7 +40,7 @@ pub struct App {
     /// The current layout of the screen
     pub layout: ScreenLayout,
     /// The help menu stored
-    pub help: Help,
+    pub help: Items<help::Item>,
     /// a bool determining whether we are in the substate and
     /// the information associated with it
     pub substate: Option<(bool, Substate)>,
@@ -55,7 +55,7 @@ impl Default for App {
             selected: None,
             options: Items::default(),
             title: String::new(),
-            help: Help::parse("./help.json").unwrap(),
+            help: help::parse("./help.json").unwrap(),
             substate: None,
         }
     }
