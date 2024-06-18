@@ -5,7 +5,7 @@ use crossterm::event::KeyCode;
 
 use crate::{
     help::Help,
-    parse::todo::Items,
+    parse::todo::{Item, Items},
     popup::{self, Popup},
 };
 
@@ -36,7 +36,7 @@ pub struct App {
     /// 1.0: Description
     /// 1.1: Scroll height of this description
     #[allow(clippy::type_complexity)]
-    pub options: Items,
+    pub options: Items<Item>,
     /// The current layout of the screen
     pub layout: ScreenLayout,
     /// The help menu stored

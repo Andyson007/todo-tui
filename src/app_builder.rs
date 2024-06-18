@@ -1,5 +1,5 @@
 //! Creates a struct for building Apps
-use crate::{app::App, parse::todo::Items};
+use crate::app::App;
 
 /// A wrapper for [`App`] with many helper functions for
 /// easier building
@@ -26,7 +26,7 @@ impl AppBuilder {
             options: options
                 .into_iter()
                 .map(|(a, b)| (a.into().into_boxed_str(), (b.into().into_boxed_str(), 0)).into())
-                .collect::<Items>(),
+                .collect::<_>(),
             ..self.0
         })
     }

@@ -9,7 +9,7 @@ use crate::{ordered_list::OrderedList, Score};
 pub struct Help(pub OrderedList<Item>);
 
 /// A helpdata wrapper for Ord implementations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Item(pub (Box<str>, Box<str>));
 
 impl Help {

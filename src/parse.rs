@@ -2,12 +2,15 @@
 //! and returning usable data
 /// Defines wrappers for handling todo items
 pub mod todo {
+    use std::fmt::Debug;
     use std::ops::{Index, IndexMut};
 
     use crate::{ordered_list::OrderedList, Score};
 
+    use super::ListItem;
+
     /// A single Todo-item
-    #[derive(Debug)]
+    #[derive(Debug, Default)]
     pub struct Item {
         /// The title of this todo item
         pub title: Box<str>,
@@ -18,13 +21,29 @@ pub mod todo {
         // TODO: Add a tag system
     }
 
-    /// A list of items
-    #[derive(Debug, Default)]
-    pub struct Items {
-        items: OrderedList<Item>,
+    impl ListItem for Item {
+        fn title(&self) -> String {
+            todo!()
+        }
+
+        fn description(&self) -> String {
+            todo!()
+        }
     }
 
-    impl Items {
+    /// A list of items
+    #[derive(Debug, Default)]
+    pub struct Items<T>
+    where
+        T: Debug + Score + ListItem,
+    {
+        items: OrderedList<T>,
+    }
+
+    impl<T> Items<T>
+    where
+        T: Debug + Score + ListItem,
+    {
         /// Returns the amount of items left
         #[must_use]
         pub fn amount(&self) -> usize {
@@ -32,11 +51,11 @@ pub mod todo {
         }
 
         /// Adds an item
-        pub fn add(&mut self, item: Item) {
+        pub fn add(&mut self, item: T) {
             self.items.insert(item);
         }
         /// Removes an item
-        pub fn remove(&mut self, index: usize) -> Item {
+        pub fn remove(&mut self, index: usize) -> T {
             self.items.data.remove(index)
         }
         /// Check if there are any items left
@@ -48,30 +67,38 @@ pub mod todo {
         /// Returns a list of each title
         #[must_use]
         pub fn titles(&self) -> Vec<String> {
-            self.items
-                .data
-                .iter()
-                .map(|x| x.title.to_string())
-                .collect()
+            self.items.data.iter().map(super::ListItem::title).collect()
         }
     }
 
-    impl Index<usize> for Items {
-        type Output = Item;
+    impl<T> Index<usize> for Items<T>
+    where
+        T: Debug + Score + ListItem,
+    {
+        type Output = T;
 
         fn index(&self, index: usize) -> &Self::Output {
             &self.items.data[index]
         }
     }
 
-    impl IndexMut<usize> for Items {
+    impl<T> IndexMut<usize> for Items<T>
+    where
+        T: Debug + Score + ListItem,
+    {
         fn index_mut(&mut self, index: usize) -> &mut Self::Output {
             &mut self.items.data[index]
         }
     }
 
-    impl FromIterator<Item> for Items {
-        fn from_iter<T: IntoIterator<Item = Item>>(iter: T) -> Self {
+    impl<T> FromIterator<T> for Items<T>
+    where
+        T: Debug + Score + ListItem,
+    {
+        fn from_iter<U>(iter: U) -> Self
+        where
+            U: IntoIterator<Item = T>,
+        {
             Self {
                 items: iter.into_iter().collect(),
             }
@@ -101,4 +128,12 @@ pub mod todo {
             }
         }
     }
+}
+
+/// Defines a trait which has a peeking value or a `title` and a description
+pub trait ListItem {
+    /// The title of the item. This is shon in lists and such
+    fn title(&self) -> String;
+    /// The description of the item. This gets shown when the title is selected
+    fn description(&self) -> String;
 }
