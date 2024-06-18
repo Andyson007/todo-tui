@@ -55,7 +55,7 @@ impl App {
         }
         match dir {
             Direction::Up => {
-                state.selected = state.selected.map_or(Some(0), |x| Some((x + 1) % len))
+                state.selected = state.selected.map_or(Some(0), |x| Some((x + 1) % len));
             }
             Direction::Down => {
                 state.selected = state.selected.map_or_else(
@@ -127,6 +127,7 @@ pub enum Substate {
 
 impl App {
     /// Handles an input
+    #[allow(clippy::missing_panics_doc)]
     pub fn handle_input(&mut self, key: KeyCode) -> Option<bool> {
         match self.layout {
             ScreenLayout::Small(ref mut state) => {
@@ -145,14 +146,16 @@ impl App {
                         popup::ReturnAction::Exit => state.popup = None,
                         popup::ReturnAction::Nothing => {}
                         popup::ReturnAction::Edit(x, new_val) => {
-                            self.static_information.lists.get_mut("AndyCo").unwrap()[x] =
-                                new_val.into();
+                            self.static_information
+                                .lists
+                                .get_mut(&state.current_list)
+                                .unwrap()[x] = new_val.into();
                             state.popup = None;
                         }
                         popup::ReturnAction::Add(new_val) => {
                             self.static_information
                                 .lists
-                                .get_mut("AndyCo")
+                                .get_mut(&state.current_list)
                                 .unwrap()
                                 .add(new_val.into());
                             state.popup = None;
@@ -171,7 +174,7 @@ impl App {
                     title: "Andy!".to_string(),
                     selected: None,
                     substate: None,
-                    current_list: "Andy!".to_string(),
+                    current_list: "AndyCo".to_string(),
                     current_data: self.static_information.lists.get("AndyCo").unwrap().clone(),
                 });
                 None
