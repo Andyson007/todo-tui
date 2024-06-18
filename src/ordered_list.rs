@@ -9,6 +9,17 @@ where
     pub data: Vec<T>,
 }
 
+impl<T> Clone for OrderedList<T>
+where
+    T: Clone + Score + Debug,
+{
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+        }
+    }
+}
+
 impl<T> Debug for OrderedList<T>
 where
     T: Debug + Score,
@@ -36,9 +47,12 @@ where
     T: Debug + Score,
 {
     fn from_iter<P: IntoIterator<Item = T>>(iter: P) -> Self {
-        Self {
-            data: iter.into_iter().collect(),
-        }
+        let mut data = iter
+            .into_iter()
+            .filter(|x| x.score("").is_some())
+            .collect::<Vec<_>>();
+        data.sort_by_cached_key(|x| x.score("").unwrap());
+        Self { data }
     }
 }
 

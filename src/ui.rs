@@ -69,11 +69,11 @@ pub fn ui(frame: &mut Frame, app: &App) {
                         (
                             *b,
                             match substate {
-                                Substate::Filter(x) => query(app.help.0.clone(), x),
+                                Substate::Filter(x) => query(app.help.0.data.clone(), x),
                             },
                         )
                     } else {
-                        (false, app.help.0.iter().cloned().enumerate().collect())
+                        (false, app.help.0.data.iter().cloned().enumerate().collect())
                     }
                 };
                 let selected = if substate_control { 0 } else { *selected };

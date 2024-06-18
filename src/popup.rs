@@ -101,7 +101,7 @@ impl Popup {
             Self::Help(ref mut x) => match key {
                 KeyCode::Char('q') => return ReturnAction::Exit,
                 KeyCode::Char('j') => {
-                    if *x != help.0.len() - 1 {
+                    if *x != help.0.data.len() - 1 {
                         *x += 1;
                     }
                 }

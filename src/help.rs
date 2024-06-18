@@ -2,11 +2,11 @@
 
 use std::{collections::HashMap, error::Error, fs::File, io::BufReader, path::Path};
 
-use crate::Score;
+use crate::{ordered_list::OrderedList, Score};
 
 /// Responsible for handling data in the help popup
 #[derive(Debug, Clone)]
-pub struct Help(pub Vec<Item>);
+pub struct Help(pub OrderedList<Item>);
 
 /// A helpdata wrapper for Ord implementations
 #[derive(Debug, Clone)]
@@ -25,11 +25,10 @@ impl Help {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
         let parsed: HashMap<String, String> = serde_json::from_reader(reader)?;
-        let mut ordered = parsed
+        let ordered = parsed
             .into_iter()
             .map(|(a, b)| Item((a.into_boxed_str(), b.into_boxed_str())))
-            .collect::<Vec<_>>();
-        ordered.sort_by_key(|x| x.score(""));
+            .collect();
         Ok(Self(ordered))
     }
 }
