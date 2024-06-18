@@ -10,7 +10,7 @@ pub mod todo {
     use super::ListItem;
 
     /// A single Todo-item
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Clone)]
     pub struct Item {
         /// The title of this todo item
         pub title: Box<str>,
@@ -32,7 +32,7 @@ pub mod todo {
     }
 
     /// A list of items
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Clone)]
     pub struct Items<T>
     where
         T: Debug + Score + ListItem,

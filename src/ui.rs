@@ -15,7 +15,7 @@ use ratatui::{
 };
 
 use crate::{
-    app::{App, CurrentEdit, CurrentSelection, Substate},
+    app::{App, CurrentEdit, CurrentSelection, ScreenLayout, State, Substate},
     popup::Popup,
     query,
 };
@@ -24,89 +24,109 @@ use crate::{
 /// It probably assumes a lot about the
 /// terminal being in raw mode etc.
 pub fn ui(frame: &mut Frame, app: &App) {
-    let (in_state, substate) = if let Some((in_state, ref x)) = app.substate {
-        (in_state, Some(x))
-    } else {
-        (false, None)
-    };
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Min(1),
-            Constraint::Length(u16::from(substate.is_some())),
-        ])
-        .split(frame.size());
-    if let Some(substate) = substate {
-        substate.render(in_state, frame, chunks[1]);
-    }
-    match &app.current_selection {
-        a @ (CurrentSelection::Menu | CurrentSelection::Description) => {
+    match app.layout {
+        ScreenLayout::Small(ref state) => {
+            let (in_state, substate) = if let Some((in_state, ref x)) = state.substate {
+                (in_state, Some(x))
+            } else {
+                (false, None)
+            };
             let chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(chunks[0]);
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Min(1),
+                    Constraint::Length(u16::from(substate.is_some())),
+                ])
+                .split(frame.size());
+            if let Some(substate) = substate {
+                substate.render(in_state, frame, chunks[1]);
+            }
+            match state.current_selection {
+                ref a @ (CurrentSelection::Menu | CurrentSelection::Description) => {
+                    let chunks = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                        .split(chunks[0]);
 
-            draw_selection(frame, chunks[0], app, a);
-            draw_info(frame, chunks[1], app, a);
-            // Used to draw on top of the menu
-        }
-    }
-    if let Some(popup) = &app.popup {
-        match popup {
-            Popup::Edit {
-                title,
-                description,
-                editing,
-                ..
-            } => {
-                render_title_desc(title, description, editing, frame);
+                    draw_selection(frame, chunks[0], state, a);
+                    draw_info(frame, chunks[1], state, a);
+                    // Used to draw on top of the menu
+                }
             }
-            Popup::Help(selected) => {
-                let area = centered_rect(60, 60, frame.size());
-                frame.render_widget(Clear, area);
-                let (substate_control, opts) = {
-                    if let Some((b, substate)) = &app.substate {
-                        (
-                            *b,
-                            match substate {
-                                Substate::Filter(x) => query(app.static_information.help.items.to_vec(), x),
-                            },
-                        )
-                    } else {
-                        (false, app.static_information.help.items.iter().cloned().enumerate().collect())
+            if let Some(popup) = &state.popup {
+                match popup {
+                    Popup::Edit {
+                        ref title,
+                        ref description,
+                        ref editing,
+                        ..
+                    } => {
+                        render_title_desc(title, description, editing, frame);
                     }
-                };
-                // HACK: This only renders the cursor at the top while searching The cursor
-                // automatically jumps back to its previous position afterward
-                let selected = if substate_control { 0 } else { *selected };
-                let chunks = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints(Constraint::from_percentages([30, 70]))
-                    .split(area);
-                let mut state = ListState::with_selected(ListState::default(), Some(selected));
-                let description = &opts.get(selected);
-                let text = List::new(opts.iter().map(|x| x.1 .0 .0.to_string()))
-                    .block(Block::default().title("Help").borders(Borders::ALL))
-                    .scroll_padding(3)
-                    .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
-                frame.render_stateful_widget(text, chunks[0], &mut state);
-                let description = Paragraph::new(Text::raw(
-                    description
-                        .map_or(String::new(), |description| description.1 .0 .1.to_string()),
-                ))
-                .block(Block::default().title("Desc").borders(Borders::ALL));
-                frame.render_widget(description, chunks[1]);
+                    Popup::Help(selected) => {
+                        let area = centered_rect(60, 60, frame.size());
+                        frame.render_widget(Clear, area);
+                        let (substate_control, opts) = {
+                            if let Some((b, substate)) = &state.substate {
+                                (
+                                    *b,
+                                    match substate {
+                                        Substate::Filter(x) => query(
+                                            app.static_information.help.items.to_vec(),
+                                            x.as_str(),
+                                        ),
+                                    },
+                                )
+                            } else {
+                                (
+                                    false,
+                                    app.static_information
+                                        .help
+                                        .items
+                                        .iter()
+                                        .cloned()
+                                        .enumerate()
+                                        .collect(),
+                                )
+                            }
+                        };
+                        // HACK: This only renders the cursor at the top while searching The cursor
+                        // automatically jumps back to its previous position afterward
+                        let selected = if substate_control { 0 } else { *selected };
+                        let chunks = Layout::default()
+                            .direction(Direction::Horizontal)
+                            .constraints(Constraint::from_percentages([30, 70]))
+                            .split(area);
+                        let mut state =
+                            ListState::with_selected(ListState::default(), Some(selected));
+                        let description = &opts.get(selected);
+                        let text = List::new(opts.iter().map(|x| x.1 .0 .0.to_string()))
+                            .block(Block::default().title("Help").borders(Borders::ALL))
+                            .scroll_padding(3)
+                            .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
+                        frame.render_stateful_widget(text, chunks[0], &mut state);
+                        let description = Paragraph::new(Text::raw(
+                            description.map_or(String::new(), |description| {
+                                description.1 .0 .1.to_string()
+                            }),
+                        ))
+                        .block(Block::default().title("Desc").borders(Borders::ALL));
+                        frame.render_widget(description, chunks[1]);
+                    }
+                }
             }
+        }
+        ScreenLayout::ListChoice => {
+            // TODO: Make it do something
         }
     }
 }
 
 /// draws the associated inforation with the current item
-fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelection) {
-    let info = Paragraph::new(Text::raw(
-        app.selected
-            .map_or_else(String::new, |x| app.static_information.lists.get("AndyCo").unwrap()[x].description.to_string()),
-    ))
+fn draw_info(frame: &mut Frame, chunk: Rect, state: &State, selection: &CurrentSelection) {
+    let info = Paragraph::new(Text::raw(state.selected.map_or_else(String::new, |x| {
+        state.current_data[x].description.to_string()
+    })))
     .block(
         Block::bordered().style(if matches!(selection, CurrentSelection::Description) {
             Color::Green
@@ -116,8 +136,8 @@ fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelec
     )
     .wrap(Wrap { trim: false })
     .scroll((
-        app.selected.map_or(0, |x| {
-            app.static_information.lists.get("AndyCo").unwrap()[x]
+        state.selected.map_or(0, |x| {
+            state.current_data[x]
                 .description_scroll
                 .try_into()
                 .expect("Corgats! You wasted time")
@@ -129,7 +149,7 @@ fn draw_info(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelec
 }
 
 /// Draws all things that are interactable
-fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App, selection: &CurrentSelection) {
+fn draw_selection(frame: &mut Frame, chunk: Rect, state: &State, selection: &CurrentSelection) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(1)])
@@ -138,13 +158,16 @@ fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App, selection: &Current
         .borders(Borders::ALL)
         .style(Style::default());
 
-    let title = Paragraph::new(Text::styled(&app.title, Style::default().fg(Color::Green)))
-        .block(title_block);
+    let title = Paragraph::new(Text::styled(
+        &state.title,
+        Style::default().fg(Color::Green),
+    ))
+    .block(title_block);
 
     frame.render_widget(title, chunks[0]);
 
-    let mut state = ListState::with_selected(ListState::default(), app.selected);
-    let list = List::new(app.static_information.lists.get("AndyCo").unwrap().titles())
+    let mut list_state = ListState::with_selected(ListState::default(), state.selected);
+    let list = List::new(state.current_data.titles())
         .block(Block::bordered().title("List").style(
             if matches!(selection, CurrentSelection::Menu) {
                 Color::Green
@@ -155,7 +178,7 @@ fn draw_selection(frame: &mut Frame, chunk: Rect, app: &App, selection: &Current
         .scroll_padding(3)
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED));
 
-    frame.render_stateful_widget(list, chunks[1], &mut state);
+    frame.render_stateful_widget(list, chunks[1], &mut list_state);
 }
 
 /// This code is absolutely stolen from the ratatui json example
