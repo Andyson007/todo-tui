@@ -4,5 +4,6 @@
   "k": "Move up",
   "q": "quit",
   "a": "add new item",
-  "e": "edit item"
+  "e": "edit item",
+  "s": "Save"
 }
