@@ -1,7 +1,7 @@
 //! Handles information about popups
 use crossterm::event::KeyCode;
 
-use crate::{app::{CurrentEdit, Substate}, help, parse::todo::Items};
+use crate::{app::{CurrentEdit, SubstateMode}, help, parse::todo::Items};
 
 /// State data for a popup
 #[derive(Debug)]
@@ -40,8 +40,7 @@ pub enum ReturnAction {
     /// The value to push
     Add((Box<str>, (Box<str>, usize))),
     /// Enter a substate
-    // TODO: Make it not override that substate
-    EnterSubState(Substate),
+    EnterSubState(SubstateMode),
 }
 
 impl Popup {
@@ -105,7 +104,7 @@ impl Popup {
                 }
                 KeyCode::Char('k') => *x = x.saturating_sub(1),
                 KeyCode::Char('/') => {
-                    return ReturnAction::EnterSubState(Substate::Filter(String::new()))
+                    return ReturnAction::EnterSubState(SubstateMode::Filter(String::new()))
                 }
                 _ => (),
             },

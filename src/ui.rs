@@ -15,7 +15,7 @@ use ratatui::{
 };
 
 use crate::{
-    app::{App, CurrentEdit, CurrentSelection, ScreenLayout, State, Substate},
+    app::{App, CurrentEdit, CurrentSelection, ScreenLayout, State, Substate, SubstateMode},
     popup::Popup,
     query,
 };
@@ -26,20 +26,15 @@ use crate::{
 pub fn ui(frame: &mut Frame, app: &App) {
     match app.layout {
         ScreenLayout::Small(ref state) => {
-            let (in_state, substate) = if let Some((in_state, ref x)) = state.substate {
-                (in_state, Some(x))
-            } else {
-                (false, None)
-            };
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Min(1),
-                    Constraint::Length(u16::from(substate.is_some())),
+                    Constraint::Length(u16::from(state.substate.is_some())),
                 ])
                 .split(frame.size());
-            if let Some(substate) = substate {
-                substate.render(in_state, frame, chunks[1]);
+            if let Some(substate) = &state.substate {
+                substate.render(substate.in_state, frame, chunks[1]);
             }
             match state.current_selection {
                 ref a @ (CurrentSelection::Menu | CurrentSelection::Description) => {
@@ -67,11 +62,15 @@ pub fn ui(frame: &mut Frame, app: &App) {
                         let area = centered_rect(60, 60, frame.size());
                         frame.render_widget(Clear, area);
                         let (substate_control, opts) = {
-                            if let Some((b, substate)) = &state.substate {
+                            if let Some(Substate {
+                                in_state,
+                                substate_mode,
+                            }) = &state.substate
+                            {
                                 (
-                                    *b,
-                                    match substate {
-                                        Substate::Filter(x) => query(
+                                    *in_state,
+                                    match substate_mode {
+                                        SubstateMode::Filter(x) => query(
                                             app.static_information.help.items.to_vec(),
                                             x.as_str(),
                                         ),
@@ -275,8 +274,8 @@ impl Substate {
     /// frame: The global frame to draw on
     /// chunk: The Rectangle which we are allowed to modify
     pub fn render(&self, in_state: bool, frame: &mut Frame, chunk: Rect) {
-        match self {
-            Self::Filter(x) => frame.render_widget(
+        match &self.substate_mode {
+            SubstateMode::Filter(x) => frame.render_widget(
                 Text::raw({
                     let mut ret = format!("/{x}");
                     if in_state {

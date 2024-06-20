@@ -118,10 +118,17 @@ pub enum CurrentEdit {
 
 /// Contains substates that should be accessible on every screen
 #[derive(Debug)]
-// TODO: make a struct
-pub enum Substate {
-    /// Filter for a result
-    /// 0: a string representing the current search query
+pub struct Substate {
+    /// is the input currently captured by this field?
+    pub in_state: bool,
+    /// In what substate are we?
+    pub substate_mode: SubstateMode,
+}
+
+/// In what substate are we?
+#[derive(Debug)]
+pub enum SubstateMode {
+    /// Filtering through some menu
     Filter(String),
 }
 
@@ -160,7 +167,12 @@ impl App {
                                 .add(new_val.into());
                             state.popup = None;
                         }
-                        popup::ReturnAction::EnterSubState(x) => state.substate = Some((true, x)),
+                        popup::ReturnAction::EnterSubState(x) => {
+                            state.substate = Some(Substate {
+                                in_state: true,
+                                substate_mode: x,
+                            });
+                        }
                     };
                 } else if let Some(x) = Self::handle_main_menu(state, key) {
                     return Some(x);
@@ -218,7 +230,10 @@ impl App {
                     }
                 }
                 KeyCode::Char('/') => {
-                    state.substate = Some((true, Substate::Filter(String::new())));
+                    state.substate = Some(Substate {
+                        in_state: true,
+                        substate_mode: SubstateMode::Filter(String::new()),
+                    });
                 }
                 _ => (),
             },
@@ -248,11 +263,15 @@ impl App {
 
     /// Handles inputs when a substate is focused
     fn handle_substate(state: &mut State, key: KeyCode) -> SubstateReturn {
-        let Some((ref mut editing @ true, ref mut substate)) = state.substate else {
+        let Some(Substate {
+            in_state: ref mut editing @ true,
+            substate_mode: ref mut substate,
+        }) = state.substate
+        else {
             return SubstateReturn::Continue;
         };
         match substate {
-            Substate::Filter(ref mut search) => match key {
+            SubstateMode::Filter(ref mut search) => match key {
                 KeyCode::Enter => {
                     *editing = false;
                     return SubstateReturn::Select;
@@ -301,7 +320,7 @@ pub struct State {
     pub selected: Option<usize>,
     /// a bool determining whether we are in the substate and
     /// the information associated with it
-    pub substate: Option<(bool, Substate)>,
+    pub substate: Option<Substate>,
     /// What Todo list are we currently editing?
     pub current_list: String,
     /// What items are in the current list?
