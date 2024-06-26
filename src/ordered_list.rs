@@ -1,3 +1,4 @@
+//! A data structure that keeps an ordered list based off the Score trait
 use std::{
     fmt::Debug,
     ops::{Deref, DerefMut},
@@ -5,6 +6,7 @@ use std::{
 
 use crate::Score;
 
+/// The main struct of this module
 pub struct OrderedList<T>
 where
     T: Debug + Score,
@@ -63,6 +65,7 @@ impl<T> OrderedList<T>
 where
     T: Debug + Score,
 {
+    /// Adds a value to the orderedlist keeping it ordered
     pub fn insert(&mut self, data: T) -> usize {
         let pos = self
             .data

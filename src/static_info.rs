@@ -1,3 +1,4 @@
+//! Infarmation related to staring things that won't get modified regularly
 use std::{collections::HashMap, error::Error, fs::File, io::BufReader, path::Path};
 
 use serde::Deserialize;
@@ -7,14 +8,20 @@ use crate::{
     parse::todo::{self, Items},
 };
 
+/// The main struct of this module
 #[derive(Debug, Default)]
 pub struct StaticInfo {
+    /// All help entries
     pub help: Items<help::Item>,
     /// All selectable options
     pub lists: HashMap<String, Items<todo::Item>>,
 }
 
 impl StaticInfo {
+    /// Creates a `StaticInfo` from two file paths
+    ///
+    /// # Errors
+    /// File not found
     pub fn from<P>(lists: P, help: P) -> Result<Self, Box<dyn Error>>
     where
         P: AsRef<Path>,
@@ -23,6 +30,14 @@ impl StaticInfo {
             help: help::parse(help)?,
             lists: parse(lists)?,
         })
+    }
+
+    /// gets a list from static info (removes it too)
+    pub fn get<T>(&mut self, query: T) -> Option<Items<todo::Item>>
+    where
+        T: Into<String>,
+    {
+        self.lists.remove(&query.into())
     }
 }
 

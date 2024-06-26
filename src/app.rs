@@ -187,7 +187,7 @@ impl App {
                     selected: None,
                     substate: None,
                     current_list: "AndyCo".to_string(),
-                    current_data: self.static_information.lists.get("AndyCo").unwrap().clone(),
+                    current_data: self.static_information.get("AndyCo").unwrap(),
                 });
                 None
             }
